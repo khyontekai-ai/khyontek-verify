@@ -1,0 +1,64 @@
+name: Issue Certificate
+
+on:
+  repository_dispatch:
+    types: [issue_certificate, resend_certificate]
+
+jobs:
+  issue:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    env:
+      PAYLOAD: ${{ toJSON(github.event.client_payload) }}
+
+    steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install pillow reportlab pymongo dnspython requests
+
+      - name: Insert certificate record into MongoDB
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          EMAIL_SALT: ${{ secrets.EMAIL_SALT }}
+        run: python3 scripts/mongo_insert.py "$PAYLOAD"
+
+      - name: Generate certificate PDF
+        run: |
+          mkdir -p generated
+          python3 scripts/generate_cert.py \
+            --data "$PAYLOAD" \
+            --output "generated/certificate.pdf"
+
+      - name: Send certificate email
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+        run: |
+          python3 scripts/send_email.py \
+            --data "$PAYLOAD" \
+            --pdf "generated/certificate.pdf"
+
+      - name: Archive certificate PDF
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+          CERT_ARCHIVE_REPO: ${{ secrets.CERT_ARCHIVE_REPO }}
+        run: |
+          python3 scripts/archive_cert.py \
+            --data "$PAYLOAD" \
+            --pdf "generated/certificate.pdf" \
+            --token "$GH_PAT" \
+            --repo "$CERT_ARCHIVE_REPO"
+
+      - name: Done
+        run: echo "Certificate pipeline completed successfully"

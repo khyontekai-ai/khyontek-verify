@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Certificate Verification — Khyontek AI</title>
+  <meta name="description" content="Verify certificates issued by Khyontek AI Pvt Ltd." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Italiana&family=Lora:ital,wght@0,400;0,600;1,400&family=Jura:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --navy:#1A2870; --blue:#2B3EAA; --gold:#F5A623;
+      --white:#FFFFFF; --off:#F5F6FA; --grey:#8A8FA8;
+      --mgrey:#C5C9D8; --lgrey:#ECEEF6; --dgrey:#2E3355;
+      --error:#C0392B; --success:#1A6B3C;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    html{font-size:16px;scroll-behavior:smooth;}
+    body{font-family:"Jura",sans-serif;background:var(--off);color:var(--dgrey);min-height:100vh;display:flex;flex-direction:column;}
+    body::before{content:"";position:fixed;top:0;left:0;width:340px;height:100vh;background:var(--navy);z-index:0;pointer-events:none;}
+    body::after{content:"";position:fixed;top:0;left:330px;width:10px;height:100vh;background:var(--gold);z-index:0;pointer-events:none;}
+    .shell{position:relative;z-index:1;display:flex;flex:1;min-height:100vh;}
+    .panel{width:340px;flex-shrink:0;display:flex;flex-direction:column;padding:48px 36px;position:relative;}
+    .panel-dots{position:absolute;inset:0;pointer-events:none;overflow:hidden;}
+    .panel-dots::before{content:"";position:absolute;inset:0;background-image:radial-gradient(circle,#22317A 1.5px,transparent 1.5px);background-size:28px 28px;opacity:0.6;}
+    .bracket-tl{position:absolute;top:48px;left:36px;width:40px;height:40px;border-top:5px solid var(--gold);border-left:5px solid var(--gold);pointer-events:none;}
+    .bracket-br{position:absolute;bottom:48px;right:36px;width:40px;height:40px;border-bottom:5px solid var(--gold);border-right:5px solid var(--gold);pointer-events:none;}
+    .logo-block{margin-top:80px;position:relative;z-index:1;}
+    .logo-wordmark{font-family:"Italiana",serif;font-size:2.4rem;color:var(--white);letter-spacing:0.01em;line-height:1;}
+    .logo-rule{width:100%;height:1px;background:var(--gold);margin:10px 0 8px;opacity:0.8;}
+    .logo-tagline{font-size:0.7rem;color:#8090CC;letter-spacing:0.18em;text-transform:uppercase;}
+    .panel-description{margin-top:auto;position:relative;z-index:1;}
+    .panel-description p{font-size:0.72rem;color:#6070A0;line-height:1.8;letter-spacing:0.04em;}
+    .panel-description .cin{margin-top:16px;font-size:0.62rem;color:#4A5580;letter-spacing:0.06em;line-height:1.7;}
+    .main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 48px;}
+    .content-card{width:100%;max-width:580px;}
+    .page-header{margin-bottom:48px;}
+    .page-label{font-size:0.68rem;letter-spacing:0.22em;text-transform:uppercase;color:var(--grey);margin-bottom:10px;}
+    .page-title{font-family:"Italiana",serif;font-size:3rem;color:var(--navy);line-height:1.1;margin-bottom:12px;}
+    .page-subtitle{font-family:"Lora",serif;font-style:italic;font-size:0.95rem;color:var(--grey);line-height:1.6;}
+    .title-rule{width:48px;height:3px;background:var(--gold);margin:16px 0 0;}
+    .verify-form{background:var(--white);border-radius:2px;padding:40px;box-shadow:0 2px 24px rgba(26,40,112,0.07),0 0 0 1px rgba(26,40,112,0.06);position:relative;}
+    .verify-form::before{content:"";position:absolute;top:0;left:0;width:4px;height:100%;background:var(--blue);border-radius:2px 0 0 2px;}
+    .field-group{margin-bottom:24px;}
+    .field-label{display:block;font-size:0.68rem;font-weight:500;letter-spacing:0.16em;text-transform:uppercase;color:var(--grey);margin-bottom:8px;}
+    .field-input{width:100%;height:52px;padding:0 16px;border:1.5px solid var(--lgrey);border-radius:2px;font-family:"Jura",sans-serif;font-size:0.95rem;color:var(--dgrey);background:var(--off);transition:border-color 0.2s,box-shadow 0.2s;outline:none;letter-spacing:0.04em;}
+    .field-input::placeholder{color:var(--mgrey);font-weight:300;letter-spacing:0.06em;}
+    .field-input:focus{border-color:var(--blue);background:var(--white);box-shadow:0 0 0 3px rgba(43,62,170,0.08);}
+    .field-input.error{border-color:var(--error);box-shadow:0 0 0 3px rgba(192,57,43,0.07);}
+    .field-hint{font-size:0.65rem;color:var(--mgrey);margin-top:6px;letter-spacing:0.05em;}
+    .btn-verify{width:100%;height:52px;background:var(--navy);color:var(--white);border:none;border-radius:2px;font-family:"Jura",sans-serif;font-weight:500;font-size:0.78rem;letter-spacing:0.2em;text-transform:uppercase;cursor:pointer;transition:background 0.2s;position:relative;overflow:hidden;margin-top:8px;}
+    .btn-verify:hover:not(:disabled){background:var(--blue);}
+    .btn-verify:disabled{opacity:0.6;cursor:not-allowed;}
+    .btn-verify .btn-text{transition:opacity 0.2s;}
+    .btn-verify.loading .btn-text{opacity:0;}
+    .btn-spinner{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:20px;height:20px;border:2px solid rgba(255,255,255,0.3);border-top-color:white;border-radius:50%;animation:spin 0.7s linear infinite;opacity:0;transition:opacity 0.2s;}
+    .btn-verify.loading .btn-spinner{opacity:1;}
+    @keyframes spin{to{transform:translate(-50%,-50%) rotate(360deg);}}
+    .form-message{margin-top:16px;padding:12px 16px;border-radius:2px;font-size:0.78rem;letter-spacing:0.04em;line-height:1.5;display:none;}
+    .form-message.error{display:block;background:#FDF0EE;border-left:3px solid var(--error);color:var(--error);}
+    .form-message.rate{display:block;background:#FDF5E8;border-left:3px solid var(--gold);color:#7A5010;}
+    .form-message.success{display:block;background:#EDF7F0;border-left:3px solid var(--success);color:var(--success);}
+    #result-section{display:none;margin-top:32px;animation:fadeUp 0.4s ease forwards;}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
+    .result-card{background:var(--white);border-radius:2px;box-shadow:0 2px 24px rgba(26,40,112,0.07),0 0 0 1px rgba(26,40,112,0.06);overflow:hidden;}
+    .result-header{background:var(--navy);padding:28px 32px;display:flex;align-items:center;gap:16px;}
+    .result-icon{width:44px;height:44px;border-radius:50%;background:rgba(245,166,35,0.15);border:2px solid var(--gold);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+    .result-icon svg{width:20px;height:20px;}
+    .result-status-label{font-size:0.65rem;letter-spacing:0.22em;text-transform:uppercase;color:var(--gold);margin-bottom:4px;}
+    .result-status-title{font-family:"Italiana",serif;font-size:1.5rem;color:var(--white);line-height:1;}
+    .result-body{padding:32px;}
+    .result-name{font-family:"Italiana",serif;font-size:2.2rem;color:var(--navy);margin-bottom:4px;line-height:1.1;}
+    .result-name-rule{width:100%;height:1px;background:linear-gradient(to right,var(--gold),transparent);margin-bottom:24px;}
+    .result-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px;}
+    .result-field-label{font-size:0.6rem;font-weight:500;letter-spacing:0.18em;text-transform:uppercase;color:var(--grey);margin-bottom:4px;}
+    .result-field-value{font-family:"Lora",serif;font-size:0.9rem;color:var(--dgrey);line-height:1.4;}
+    .result-track-pill{display:inline-flex;align-items:center;background:var(--lgrey);padding:6px 14px 6px 10px;border-radius:2px;border-left:3px solid var(--blue);}
+    .result-track-pill span{font-size:0.78rem;font-weight:500;color:var(--navy);letter-spacing:0.04em;}
+    .tier-badge{display:inline-block;padding:3px 10px;border-radius:2px;font-size:0.68rem;font-weight:500;letter-spacing:0.1em;text-transform:uppercase;}
+    .tier-rc{background:rgba(26,40,112,0.08);color:var(--navy);}
+    .tier-cc{background:rgba(245,166,35,0.12);color:#7A5010;}
+    .collab-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;}
+    .collab-tag{background:var(--lgrey);border:1px solid var(--mgrey);border-radius:2px;padding:3px 10px;font-size:0.68rem;color:var(--dgrey);}
+    .result-footer{border-top:1px solid var(--lgrey);padding:16px 32px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+    .result-cert-id{font-size:0.68rem;color:var(--grey);letter-spacing:0.08em;}
+    .result-timestamp{font-size:0.62rem;color:var(--mgrey);letter-spacing:0.05em;text-align:right;}
+    .btn-resend{margin-top:16px;width:100%;height:44px;background:transparent;color:var(--blue);border:1.5px solid var(--blue);border-radius:2px;font-family:"Jura",sans-serif;font-weight:500;font-size:0.72rem;letter-spacing:0.16em;text-transform:uppercase;cursor:pointer;transition:background 0.2s,color 0.2s;}
+    .btn-resend:hover{background:var(--blue);color:var(--white);}
+    .btn-resend:disabled{opacity:0.5;cursor:not-allowed;}
+    .page-footer{text-align:center;padding:24px;font-size:0.65rem;color:var(--grey);letter-spacing:0.08em;position:relative;z-index:1;border-top:1px solid var(--lgrey);background:var(--white);}
+    .page-footer a{color:var(--blue);text-decoration:none;transition:color 0.15s;}
+    .page-footer a:hover{color:var(--navy);}
+    @media(max-width:860px){
+      body::before{width:0;}body::after{display:none;}
+      .shell{flex-direction:column;}
+      .panel{width:100%;background:var(--navy);padding:28px 24px 20px;flex-direction:row;align-items:center;gap:24px;}
+      .panel-dots,.bracket-tl,.bracket-br,.panel-description{display:none;}
+      .logo-block{margin-top:0;}
+      .logo-wordmark{font-size:1.8rem;}
+      .main{padding:32px 20px;}
+      .page-title{font-size:2.2rem;}
+      .verify-form{padding:28px 24px;}
+      .result-grid{grid-template-columns:1fr;gap:16px;}
+      .result-body{padding:24px;}
+      .result-footer{flex-direction:column;gap:6px;text-align:center;}
+    }
+  </style>
+</head>
+<body>
+<div class="shell">
+  <aside class="panel">
+    <div class="panel-dots"></div>
+    <div class="bracket-tl"></div>
+    <div class="bracket-br"></div>
+    <div class="logo-block">
+      <div class="logo-wordmark">Khyontek.ai</div>
+      <div class="logo-rule"></div>
+      <div class="logo-tagline">The Shape of Intelligence</div>
+    </div>
+    <div class="panel-description">
+      <p>This portal verifies certificates issued by Khyontek AI Pvt Ltd for research programmes, internships, and workshops.</p>
+      <p class="cin">CIN: U62020AS2026PTC029657<br>Guwahati, Assam, India<br>programmes@khyontekai.com</p>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="content-card">
+      <div class="page-header">
+        <div class="page-label">Official Verification Portal</div>
+        <h1 class="page-title">Certificate<br>Verification</h1>
+        <p class="page-subtitle">Enter your certificate ID and registered email address to verify authenticity.</p>
+        <div class="title-rule"></div>
+      </div>
+
+      <div class="verify-form">
+        <div class="field-group">
+          <label class="field-label" for="cert-id">Certificate ID</label>
+          <input class="field-input" type="text" id="cert-id" placeholder="KAI-SRIP-260001" autocomplete="off" spellcheck="false"/>
+          <div class="field-hint">Format: KAI-[PROG]-[YY][SERIAL] &middot; e.g. KAI-SRIP-260001</div>
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="email">Registered Email Address</label>
+          <input class="field-input" type="email" id="email" placeholder="your@email.com" autocomplete="email"/>
+          <div class="field-hint">The email address you used when registering for the programme</div>
+        </div>
+        <button class="btn-verify" id="verify-btn" onclick="handleVerify()">
+          <span class="btn-text">Verify Certificate</span>
+          <div class="btn-spinner"></div>
+        </button>
+        <div class="form-message" id="form-message"></div>
+      </div>
+
+      <div id="result-section">
+        <div class="result-card">
+          <div class="result-header">
+            <div class="result-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#F5A623" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+            </div>
+            <div>
+              <div class="result-status-label">Verified &middot; Authentic</div>
+              <div class="result-status-title" id="res-cert-type">Certificate of Completion</div>
+            </div>
+          </div>
+          <div class="result-body">
+            <div class="result-name" id="res-name">Recipient Name</div>
+            <div class="result-name-rule"></div>
+            <div class="result-grid">
+              <div>
+                <div class="result-field-label">Programme</div>
+                <div class="result-field-value" id="res-programme">—</div>
+              </div>
+              <div>
+                <div class="result-field-label">Cohort</div>
+                <div class="result-field-value" id="res-cohort">—</div>
+              </div>
+              <div>
+                <div class="result-field-label">Research Track</div>
+                <div class="result-field-value">
+                  <div class="result-track-pill"><span id="res-track">—</span></div>
+                </div>
+              </div>
+              <div>
+                <div class="result-field-label">Certificate Tier</div>
+                <div class="result-field-value"><span class="tier-badge" id="res-tier-badge">—</span></div>
+              </div>
+              <div>
+                <div class="result-field-label">Duration</div>
+                <div class="result-field-value" id="res-duration">—</div>
+              </div>
+              <div>
+                <div class="result-field-label">Issue Date</div>
+                <div class="result-field-value" id="res-issue-date">—</div>
+              </div>
+              <div id="res-collab-row" style="display:none;grid-column:1/-1;">
+                <div class="result-field-label">In Collaboration With</div>
+                <div class="collab-tags" id="res-collabs"></div>
+              </div>
+              <div style="grid-column:1/-1;">
+                <div class="result-field-label">Issued By</div>
+                <div class="result-field-value" id="res-issued-by">—</div>
+              </div>
+            </div>
+            <button class="btn-resend" id="resend-btn" onclick="handleResend()">
+              Resend Certificate to My Email
+            </button>
+            <div class="form-message" id="resend-message"></div>
+          </div>
+          <div class="result-footer">
+            <div class="result-cert-id" id="res-cert-id">—</div>
+            <div class="result-timestamp" id="res-timestamp">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<footer class="page-footer">
+  <a href="https://khyontekai.com" target="_blank">khyontekai.com</a>
+  &nbsp;&middot;&nbsp;
+  <a href="mailto:programmes@khyontekai.com">programmes@khyontekai.com</a>
+  &nbsp;&middot;&nbsp;
+  &copy; 2026 Khyontek AI Pvt Ltd
+</footer>
+
+<script>
+  const RATE_KEY='kai_verify_attempts', RATE_LIMIT=5, RATE_WINDOW=15*60*1000;
+  let verifiedCertId='', verifiedEmail='';
+
+  function getRateData(){try{return JSON.parse(sessionStorage.getItem(RATE_KEY))||{count:0,start:Date.now()};}catch{return{count:0,start:Date.now()};}}
+  function checkRate(){const d=getRateData();if(Date.now()-d.start>RATE_WINDOW){sessionStorage.setItem(RATE_KEY,JSON.stringify({count:0,start:Date.now()}));return true;}return d.count<RATE_LIMIT;}
+  function incrementRate(){const d=getRateData();d.count++;sessionStorage.setItem(RATE_KEY,JSON.stringify(d));}
+  function showMsg(id,text,type){const el=document.getElementById(id);el.textContent=text;el.className='form-message '+type;}
+  function hideMsg(id){document.getElementById(id).className='form-message';}
+  function setInputError(id,on){document.getElementById(id).classList.toggle('error',on);}
+  function setLoading(btnId,on){const b=document.getElementById(btnId);b.disabled=on;b.classList.toggle('loading',on);}
+
+  function formatDate(iso){
+    if(!iso)return'—';
+    return new Date(iso).toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'});
+  }
+
+  function populateResult(data){
+    const isRC=data.tier==='Research Contribution';
+    document.getElementById('res-cert-type').textContent=isRC?'Certificate of Research Contribution':'Certificate of Completion';
+    document.getElementById('res-name').textContent=data.recipient_name||'—';
+    document.getElementById('res-programme').textContent=data.programme||'—';
+    document.getElementById('res-cohort').textContent=data.cohort||'—';
+    document.getElementById('res-track').textContent=data.track||'—';
+    document.getElementById('res-duration').textContent=data.duration||'—';
+    document.getElementById('res-issue-date').textContent=formatDate(data.issue_date);
+    document.getElementById('res-issued-by').textContent=(data.issued_by||[]).join(' · ')||'Khyontek AI Pvt Ltd';
+    document.getElementById('res-cert-id').textContent='ID: '+(data.cert_id||'—');
+    const badge=document.getElementById('res-tier-badge');
+    badge.textContent=data.tier||'—';
+    badge.className='tier-badge '+(isRC?'tier-rc':'tier-cc');
+
+    // Collaborators
+    const collabs=data.collaborators||[];
+    if(collabs.length>0){
+      document.getElementById('res-collab-row').style.display='block';
+      document.getElementById('res-collabs').innerHTML=collabs.map(c=>`<span class="collab-tag">${c.name}</span>`).join('');
+    } else {
+      document.getElementById('res-collab-row').style.display='none';
+    }
+
+    const now=new Date();
+    document.getElementById('res-timestamp').textContent=
+      'Verified on '+now.toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'})+
+      ' at '+now.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+
+    verifiedCertId=data.cert_id||'';
+    verifiedEmail=document.getElementById('email').value.trim().toLowerCase();
+
+    const section=document.getElementById('result-section');
+    section.style.display='block';
+    section.scrollIntoView({behavior:'smooth',block:'nearest'});
+  }
+
+  async function handleVerify(){
+    hideMsg('form-message');
+    document.getElementById('result-section').style.display='none';
+
+    const certId=document.getElementById('cert-id').value.trim().toUpperCase();
+    const email=document.getElementById('email').value.trim().toLowerCase();
+
+    let valid=true;
+    if(!certId){setInputError('cert-id',true);valid=false;}else{setInputError('cert-id',false);}
+    if(!email||!email.includes('@')){setInputError('email',true);valid=false;}else{setInputError('email',false);}
+    if(!valid){showMsg('form-message','Please fill in both fields correctly.','error');return;}
+
+    if(!checkRate()){showMsg('form-message','Too many attempts. Please try again after 15 minutes.','rate');return;}
+
+    setLoading('verify-btn',true);
+    incrementRate();
+
+    try{
+      const res=await fetch('/api/verify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cert_id:certId,email})});
+      const data=await res.json();
+      if(res.status===429){showMsg('form-message','Too many attempts. Please try again later.','rate');}
+      else if(res.status===404||res.status===401){showMsg('form-message','Details do not match our records. Please check your Certificate ID and email address.','error');}
+      else if(res.status===410){showMsg('form-message','This certificate has been revoked. Contact programmes@khyontekai.com for assistance.','error');}
+      else if(!res.ok){showMsg('form-message','Something went wrong. Please try again in a moment.','error');}
+      else{populateResult(data);}
+    }catch{
+      showMsg('form-message','Unable to reach the verification server. Please check your connection and try again.','error');
+    }finally{
+      setLoading('verify-btn',false);
+    }
+  }
+
+  async function handleResend(){
+    if(!verifiedCertId||!verifiedEmail)return;
+    hideMsg('resend-message');
+    const btn=document.getElementById('resend-btn');
+    btn.disabled=true;
+    btn.textContent='Sending...';
+
+    try{
+      const res=await fetch('/api/verify',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({cert_id:verifiedCertId,email:verifiedEmail,action:'resend'})});
+      const data=await res.json();
+      if(res.ok){showMsg('resend-message',data.message||'Certificate resent. Please check your email.','success');}
+      else{showMsg('resend-message',data.error||'Resend failed. Please contact programmes@khyontekai.com','error');}
+    }catch{
+      showMsg('resend-message','Network error. Please contact programmes@khyontekai.com','error');
+    }finally{
+      btn.disabled=false;
+      btn.textContent='Resend Certificate to My Email';
+    }
+  }
+
+  document.addEventListener('keydown',e=>{if(e.key==='Enter')handleVerify();});
+</script>
+</body>
+</html>

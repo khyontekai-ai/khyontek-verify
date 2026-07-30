@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Certificate Admin — Khyontek AI</title>
+  <link href="https://fonts.googleapis.com/css2?family=Italiana&family=Jura:wght@300;400;500&family=Lora:ital@0;1&display=swap" rel="stylesheet"/>
+  <style>
+    :root{--navy:#1A2870;--blue:#2B3EAA;--gold:#F5A623;--white:#FFFFFF;--off:#F5F6FA;--grey:#8A8FA8;--mgrey:#C5C9D8;--lgrey:#ECEEF6;--dgrey:#2E3355;--error:#C0392B;--success:#1A6B3C;}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:"Jura",sans-serif;background:var(--off);min-height:100vh;display:flex;flex-direction:column;}
+    body::before{content:"";position:fixed;top:0;left:0;width:300px;height:100vh;background:var(--navy);z-index:0;pointer-events:none;}
+    body::after{content:"";position:fixed;top:0;left:290px;width:10px;height:100vh;background:var(--gold);z-index:0;pointer-events:none;}
+    .shell{position:relative;z-index:1;display:flex;flex:1;min-height:100vh;}
+    .panel{width:300px;flex-shrink:0;display:flex;flex-direction:column;padding:40px 28px;position:relative;}
+    .panel::before{content:"";position:absolute;inset:0;background-image:radial-gradient(circle,#22317A 1.5px,transparent 1.5px);background-size:28px 28px;opacity:0.5;pointer-events:none;}
+    .bracket-tl{position:absolute;top:40px;left:28px;width:36px;height:36px;border-top:5px solid var(--gold);border-left:5px solid var(--gold);}
+    .bracket-br{position:absolute;bottom:40px;right:28px;width:36px;height:36px;border-bottom:5px solid var(--gold);border-right:5px solid var(--gold);}
+    .logo-block{margin-top:72px;position:relative;z-index:1;}
+    .logo-wordmark{font-family:"Italiana",serif;font-size:2rem;color:var(--white);line-height:1;}
+    .logo-rule{width:100%;height:1px;background:var(--gold);margin:8px 0 6px;}
+    .logo-tagline{font-size:0.62rem;color:#8090CC;letter-spacing:0.18em;text-transform:uppercase;}
+    .panel-info{margin-top:auto;position:relative;z-index:1;}
+    .panel-info p{font-size:0.65rem;color:#5060A0;line-height:1.8;}
+    .panel-info .admin-badge{display:inline-block;margin-top:12px;padding:4px 10px;background:rgba(245,166,35,0.15);border:1px solid var(--gold);border-radius:2px;font-size:0.6rem;color:var(--gold);letter-spacing:0.12em;text-transform:uppercase;}
+    .main{flex:1;display:flex;flex-direction:column;align-items:center;padding:40px;overflow-y:auto;}
+    .content{width:100%;max-width:760px;}
+    #login-screen{display:flex;flex-direction:column;justify-content:center;min-height:80vh;}
+    #admin-screen{display:none;}
+    .page-label{font-size:0.65rem;letter-spacing:0.22em;text-transform:uppercase;color:var(--grey);margin-bottom:8px;}
+    .page-title{font-family:"Italiana",serif;font-size:2.6rem;color:var(--navy);line-height:1.1;margin-bottom:10px;}
+    .page-sub{font-family:"Lora",serif;font-style:italic;font-size:0.9rem;color:var(--grey);margin-bottom:4px;}
+    .title-rule{width:40px;height:3px;background:var(--gold);margin:12px 0 32px;}
+    .card{background:var(--white);border-radius:2px;padding:32px;box-shadow:0 2px 20px rgba(26,40,112,0.07),0 0 0 1px rgba(26,40,112,0.06);position:relative;margin-bottom:24px;}
+    .card::before{content:"";position:absolute;top:0;left:0;width:4px;height:100%;background:var(--blue);border-radius:2px 0 0 2px;}
+    .card-title{font-size:0.68rem;font-weight:500;letter-spacing:0.16em;text-transform:uppercase;color:var(--grey);margin-bottom:20px;}
+    .field-group{margin-bottom:18px;}
+    .field-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+    .field-label{display:block;font-size:0.65rem;font-weight:500;letter-spacing:0.14em;text-transform:uppercase;color:var(--grey);margin-bottom:6px;}
+    .opt{font-weight:300;color:var(--mgrey);text-transform:none;letter-spacing:0;font-size:0.6rem;}
+    .field-input,.field-select{width:100%;height:48px;padding:0 14px;border:1.5px solid var(--lgrey);border-radius:2px;font-family:"Jura",sans-serif;font-size:0.88rem;color:var(--dgrey);background:var(--off);transition:border-color 0.2s,box-shadow 0.2s;outline:none;}
+    .field-input:focus,.field-select:focus{border-color:var(--blue);background:var(--white);box-shadow:0 0 0 3px rgba(43,62,170,0.08);}
+    .field-input.err{border-color:var(--error);}
+    .field-hint{font-size:0.6rem;color:var(--mgrey);margin-top:4px;}
+    .cert-id-preview{margin-top:8px;padding:8px 14px;background:var(--lgrey);border-radius:2px;border-left:3px solid var(--blue);font-size:0.82rem;color:var(--navy);font-weight:500;letter-spacing:0.06em;}
+    .toggle-row{display:flex;align-items:center;gap:12px;padding:12px 0;}
+    .toggle{position:relative;width:44px;height:24px;flex-shrink:0;}
+    .toggle input{opacity:0;width:0;height:0;}
+    .toggle-slider{position:absolute;cursor:pointer;inset:0;background:var(--lgrey);border-radius:24px;transition:0.2s;}
+    .toggle-slider:before{content:"";position:absolute;height:18px;width:18px;left:3px;bottom:3px;background:white;border-radius:50%;transition:0.2s;}
+    input:checked+.toggle-slider{background:var(--blue);}
+    input:checked+.toggle-slider:before{transform:translateX(20px);}
+    .toggle-label{font-size:0.78rem;color:var(--dgrey);}
+    .collab-section{background:var(--off);border-radius:2px;padding:20px;border:1.5px dashed var(--lgrey);}
+    .collab-block{padding-bottom:16px;margin-bottom:16px;border-bottom:1px solid var(--lgrey);}
+    .collab-block:last-child{border-bottom:none;padding-bottom:0;margin-bottom:0;}
+    .collab-num{font-size:0.6rem;font-weight:500;letter-spacing:0.14em;text-transform:uppercase;color:var(--blue);margin-bottom:10px;}
+    .btn{width:100%;height:50px;border:none;border-radius:2px;font-family:"Jura",sans-serif;font-weight:500;font-size:0.75rem;letter-spacing:0.18em;text-transform:uppercase;cursor:pointer;transition:background 0.2s;position:relative;overflow:hidden;}
+    .btn-primary{background:var(--navy);color:var(--white);}
+    .btn-primary:hover:not(:disabled){background:var(--blue);}
+    .btn-primary:disabled{opacity:0.6;cursor:not-allowed;}
+    .btn-primary.loading .btn-text{opacity:0;}
+    .btn-spinner{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:18px;height:18px;border:2px solid rgba(255,255,255,0.3);border-top-color:white;border-radius:50%;animation:spin 0.7s linear infinite;opacity:0;}
+    .btn-primary.loading .btn-spinner{opacity:1;}
+    @keyframes spin{to{transform:translate(-50%,-50%) rotate(360deg);}}
+    .msg{margin-top:14px;padding:12px 16px;border-radius:2px;font-size:0.76rem;line-height:1.5;display:none;}
+    .msg.error{display:block;background:#FDF0EE;border-left:3px solid var(--error);color:var(--error);}
+    .msg.success{display:block;background:#EDF7F0;border-left:3px solid var(--success);color:var(--success);}
+    .divider{height:1px;background:var(--lgrey);margin:20px 0;}
+    .issued-item{padding:14px 0;border-bottom:1px solid var(--lgrey);display:flex;justify-content:space-between;align-items:flex-start;}
+    .issued-item:last-child{border-bottom:none;}
+    .issued-name{font-size:0.88rem;color:var(--navy);font-weight:500;}
+    .issued-meta{font-size:0.7rem;color:var(--grey);letter-spacing:0.04em;margin-top:2px;}
+    .tier-badge{font-size:0.65rem;padding:2px 8px;border-radius:2px;white-space:nowrap;}
+    .tier-rc{background:rgba(26,40,112,0.08);color:var(--navy);}
+    .tier-cc{background:rgba(245,166,35,0.12);color:#7A5010;}
+    /* CONFIRMATION MODAL */
+    .modal-overlay{position:fixed;inset:0;background:rgba(26,40,112,0.5);z-index:100;display:none;align-items:center;justify-content:center;padding:24px;}
+    .modal-overlay.show{display:flex;}
+    .modal{background:var(--white);border-radius:2px;padding:36px;max-width:520px;width:100%;box-shadow:0 8px 40px rgba(26,40,112,0.2);position:relative;}
+    .modal::before{content:"";position:absolute;top:0;left:0;width:4px;height:100%;background:var(--gold);border-radius:2px 0 0 2px;}
+    .modal-title{font-family:"Italiana",serif;font-size:1.8rem;color:var(--navy);margin-bottom:6px;}
+    .modal-sub{font-size:0.78rem;color:var(--grey);margin-bottom:24px;}
+    .modal-table{width:100%;border-collapse:collapse;margin-bottom:24px;}
+    .modal-table tr:not(:last-child) td{border-bottom:1px solid var(--lgrey);}
+    .modal-table td{padding:8px 0;font-size:0.8rem;}
+    .modal-table td:first-child{color:var(--grey);width:40%;font-size:0.7rem;letter-spacing:0.08em;text-transform:uppercase;}
+    .modal-table td:last-child{color:var(--dgrey);font-weight:500;}
+    .modal-actions{display:flex;gap:12px;}
+    .btn-cancel{flex:1;height:46px;background:var(--off);color:var(--grey);border:1.5px solid var(--lgrey);border-radius:2px;font-family:"Jura",sans-serif;font-size:0.72rem;letter-spacing:0.14em;text-transform:uppercase;cursor:pointer;transition:border-color 0.2s;}
+    .btn-cancel:hover{border-color:var(--mgrey);color:var(--dgrey);}
+    .btn-confirm{flex:2;height:46px;background:var(--navy);color:var(--white);border:none;border-radius:2px;font-family:"Jura",sans-serif;font-weight:500;font-size:0.72rem;letter-spacing:0.14em;text-transform:uppercase;cursor:pointer;transition:background 0.2s;}
+    .btn-confirm:hover{background:var(--blue);}
+    footer{text-align:center;padding:20px;font-size:0.6rem;color:var(--grey);letter-spacing:0.08em;position:relative;z-index:1;border-top:1px solid var(--lgrey);background:var(--white);}
+    footer a{color:var(--blue);text-decoration:none;}
+    @media(max-width:800px){
+      body::before,body::after{display:none;}
+      .panel{width:100%;background:var(--navy);padding:24px;flex-direction:row;align-items:center;gap:20px;}
+      .panel::before,.bracket-tl,.bracket-br,.panel-info{display:none;}
+      .logo-block{margin-top:0;}
+      .main{padding:24px 16px;}
+      .field-row{grid-template-columns:1fr;}
+      .modal-actions{flex-direction:column;}
+    }
+  </style>
+</head>
+<body>
+
+<!-- CONFIRMATION MODAL -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-title">Confirm Before Issuing</div>
+    <div class="modal-sub">Please verify all details carefully. Once issued, the certificate is emailed to the student.</div>
+    <table class="modal-table" id="modal-table"></table>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancel — Go Back</button>
+      <button class="btn-confirm" onclick="confirmIssue()">Yes, Issue Certificate</button>
+    </div>
+  </div>
+</div>
+
+<div class="shell">
+  <aside class="panel">
+    <div class="bracket-tl"></div>
+    <div class="bracket-br"></div>
+    <div class="logo-block">
+      <div class="logo-wordmark">Khyontek.ai</div>
+      <div class="logo-rule"></div>
+      <div class="logo-tagline">The Shape of Intelligence</div>
+    </div>
+    <div class="panel-info">
+      <p>Certificate Administration Portal — authorised personnel only.</p>
+      <p>SRIP · Workshops · FDPs · Training · Collaborations</p>
+      <div class="admin-badge">Admin Access</div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="content">
+
+      <!-- LOGIN -->
+      <div id="login-screen">
+        <div class="page-label">Restricted Access</div>
+        <h1 class="page-title">Admin Login</h1>
+        <p class="page-sub">Authorised personnel only.</p>
+        <div class="title-rule"></div>
+        <div class="card">
+          <div class="field-group">
+            <label class="field-label" for="admin-id">Admin ID</label>
+            <input class="field-input" type="text" id="admin-id" placeholder="Enter admin ID" autocomplete="username"/>
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="admin-pass">Password</label>
+            <input class="field-input" type="password" id="admin-pass" placeholder="Enter password" autocomplete="current-password"/>
+          </div>
+          <button class="btn btn-primary" onclick="handleLogin()">
+            <span class="btn-text">Sign In</span>
+            <div class="btn-spinner"></div>
+          </button>
+          <div class="msg" id="login-msg"></div>
+        </div>
+      </div>
+
+      <!-- ADMIN -->
+      <div id="admin-screen">
+        <div class="page-label">Certificate Administration</div>
+        <h1 class="page-title">Issue Certificate</h1>
+        <p class="page-sub">Fill in all details. A confirmation screen will appear before the certificate is issued.</p>
+        <div class="title-rule"></div>
+
+        <div class="card">
+          <!-- STUDENT DETAILS -->
+          <div class="card-title">Student Details</div>
+          <div class="field-row">
+            <div class="field-group">
+              <label class="field-label" for="f-name">Full Name *</label>
+              <input class="field-input" type="text" id="f-name" placeholder="Exactly as it should appear on certificate"/>
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="f-email">Registered Email *</label>
+              <input class="field-input" type="email" id="f-email" placeholder="student@email.com"/>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <!-- PROGRAMME DETAILS -->
+          <div class="card-title">Programme Details</div>
+          <div class="field-row">
+            <div class="field-group">
+              <label class="field-label" for="f-prog">Programme *</label>
+              <select class="field-select" id="f-prog" onchange="updateCertId()">
+                <option value="">Select programme</option>
+                <option value="SRIP|Summer Research Immersion Programme">Summer Research Immersion Programme</option>
+                <option value="WS|Workshop">Workshop</option>
+                <option value="FDP|Faculty Development Programme">Faculty Development Programme</option>
+                <option value="TRN|Training Programme">Training Programme</option>
+                <option value="INT|Internship">Internship</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="f-cohort">Cohort / Batch <span class="opt">(optional)</span></label>
+              <input class="field-input" type="text" id="f-cohort" placeholder="e.g. Cohort 01 or July 2026"/>
+            </div>
+          </div>
+
+          <!-- Track with custom option -->
+          <div class="field-group">
+            <label class="field-label" for="f-track">Research Track *</label>
+            <select class="field-select" id="f-track" onchange="toggleCustomTrack()">
+              <option value="">Select track</option>
+              <option value="Biological Intelligence Research">Biological Intelligence Research</option>
+              <option value="Ayurvedic and Ethnobotanical Research">Ayurvedic and Ethnobotanical Research</option>
+              <option value="Compliance and RegTech Research">Compliance and RegTech Research</option>
+              <option value="AI and Data Foundations">AI and Data Foundations</option>
+              <option value="General">General</option>
+              <option value="__custom__">Custom / Other (type below)</option>
+            </select>
+          </div>
+          <div class="field-group" id="custom-track-group" style="display:none;">
+            <label class="field-label" for="f-custom-track">Custom Track Name *</label>
+            <input class="field-input" type="text" id="f-custom-track" placeholder="e.g. Machine Learning Fundamentals"/>
+          </div>
+
+          <div class="field-row">
+            <div class="field-group">
+              <label class="field-label" for="f-tier">Certificate Tier *</label>
+              <select class="field-select" id="f-tier">
+                <option value="">Select tier</option>
+                <option value="Research Contribution">Research Contribution</option>
+                <option value="Completion">Completion</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="f-duration">Duration *</label>
+              <input class="field-input" type="text" id="f-duration" placeholder="e.g. 45 Days or 2 Days"/>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field-group">
+              <label class="field-label" for="f-start">Start Date *</label>
+              <input class="field-input" type="date" id="f-start"/>
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="f-end">End / Issue Date *</label>
+              <input class="field-input" type="date" id="f-end"/>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <!-- CERTIFICATE ID -->
+          <div class="card-title">Certificate ID</div>
+          <div class="field-row">
+            <div class="field-group">
+              <label class="field-label" for="f-serial">Serial Number *</label>
+              <input class="field-input" type="number" id="f-serial" placeholder="e.g. 1" min="1" oninput="updateCertId()"/>
+              <div class="field-hint">Check master register for last used serial for this programme this year. Add 1.</div>
+            </div>
+            <div class="field-group">
+              <label class="field-label">Generated Certificate ID</label>
+              <div class="cert-id-preview" id="cert-id-preview">Fill programme and serial number</div>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <!-- SIGNATURE OPTIONS -->
+          <div class="card-title">Signature Options</div>
+          <div class="toggle-row">
+            <label class="toggle">
+              <input type="checkbox" id="f-njk-sig"/>
+              <span class="toggle-slider"></span>
+            </label>
+            <span class="toggle-label">Include NJK signature (upload njk_signature.png to scripts/fonts/ first)</span>
+          </div>
+
+          <div class="divider"></div>
+
+          <!-- COLLABORATORS -->
+          <div class="card-title">Collaborators <span class="opt">— leave blank if none</span></div>
+          <div class="field-hint" style="margin-bottom:14px;">Upload collaborator logo PNG to scripts/fonts/collab-logos/ in your repo, then enter the filename here.</div>
+          <div class="collab-section">
+            <div class="collab-block">
+              <div class="collab-num">Collaborator 1</div>
+              <div class="field-row">
+                <div class="field-group" style="margin-bottom:0">
+                  <label class="field-label" for="c1-name">Institution Name</label>
+                  <input class="field-input" type="text" id="c1-name" placeholder="e.g. IIT Guwahati"/>
+                </div>
+                <div class="field-group" style="margin-bottom:0">
+                  <label class="field-label" for="c1-logo">Logo Filename</label>
+                  <input class="field-input" type="text" id="c1-logo" placeholder="e.g. iitg.png"/>
+                </div>
+              </div>
+              <div class="field-row" style="margin-top:10px;">
+                <div class="field-group" style="margin-bottom:0">
+                  <label class="field-label" for="c1-sig-name">Signatory Name <span class="opt">(if signing)</span></label>
+                  <input class="field-input" type="text" id="c1-sig-name" placeholder="e.g. Prof. Rajesh Kumar"/>
+                </div>
+                <div class="field-group" style="margin-bottom:0">
+                  <label class="field-label" for="c1-sig-title">Signatory Title</label>
+                  <input class="field-input" type="text" id="c1-sig-title" placeholder="e.g. Director, IIT Guwahati"/>
+                </div>
+              </div>
+            </div>
+            <div class="collab-block">
+              <div class="collab-num">Collaborator 2</div>
+              <div class="field-row">
+                <div class="field-group" style="margin-bottom:0">
+                  <label class="field-label" for="c2-name">Institution Name</label>
+                  <input class="field-input" type="text" id="c2-name" placeholder="e.g. GMCH"/>
+                </div>
+                <div class="field-group" style="margin-bottom:0">
+                  <label class="field-label" for="c2-logo">Logo Filename</label>
+                  <input class="field-input" type="text" id="c2-logo" placeholder="e.g. gmch.png"/>
+                </div>
+              </div>
+              <div class="field-row" style="margin-top:10px;">
+                <div class="field-group" style="margin-bottom:0">
+                  <label class="field-label" for="c2-sig-name">Signatory Name</label>
+                  <input class="field-input" type="text" id="c2-sig-name" placeholder="e.g. Dr. Priya Sharma"/>
+                </div>
+                <div class="field-group" style="margin-bottom:0">
+                  <label class="field-label" for="c2-sig-title">Signatory Title</label>
+                  <input class="field-input" type="text" id="c2-sig-title" placeholder="e.g. Principal, GMCH"/>
+                </div>
+              </div>
+            </div>
+            <div class="collab-block">
+              <div class="collab-num">Collaborator 3</div>
+              <div class="field-row">
+                <div class="field-group" style="margin-bottom:0">
+                  <label class="field-label" for="c3-name">Institution Name</label>
+                  <input class="field-input" type="text" id="c3-name" placeholder="e.g. North Lakhimpur University"/>
+                </div>
+                <div class="field-group" style="margin-bottom:0">
+                  <label class="field-label" for="c3-logo">Logo Filename</label>
+                  <input class="field-input" type="text" id="c3-logo" placeholder="e.g. nlu.png"/>
+                </div>
+              </div>
+              <div class="field-row" style="margin-top:10px;">
+                <div class="field-group" style="margin-bottom:0">
+                  <label class="field-label" for="c3-sig-name">Signatory Name</label>
+                  <input class="field-input" type="text" id="c3-sig-name" placeholder=""/>
+                </div>
+                <div class="field-group" style="margin-bottom:0">
+                  <label class="field-label" for="c3-sig-title">Signatory Title</label>
+                  <input class="field-input" type="text" id="c3-sig-title" placeholder=""/>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <!-- PAYMENT -->
+          <div class="card-title">Payment Details <span class="opt">— optional</span></div>
+          <div class="field-row">
+            <div class="field-group">
+              <label class="field-label" for="f-pay-status">Payment Status</label>
+              <select class="field-select" id="f-pay-status">
+                <option value="Not Applicable">Not Applicable</option>
+                <option value="Paid">Paid</option>
+                <option value="Waived">Waived</option>
+                <option value="Pending">Pending</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="f-pay-mode">Payment Mode</label>
+              <select class="field-select" id="f-pay-mode">
+                <option value="">Select</option>
+                <option value="Razorpay">Razorpay</option>
+                <option value="Bank Transfer">Bank Transfer (NEFT/IMPS/UPI)</option>
+                <option value="Cash">Cash</option>
+                <option value="DD/Cheque">DD / Cheque</option>
+                <option value="Waived">Waived</option>
+              </select>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field-group">
+              <label class="field-label" for="f-pay-amount">Amount (INR)</label>
+              <input class="field-input" type="number" id="f-pay-amount" placeholder="e.g. 4999"/>
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="f-pay-ref">Reference / UTR / Receipt No.</label>
+              <input class="field-input" type="text" id="f-pay-ref" placeholder="e.g. pay_ABC123XYZ"/>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <button class="btn btn-primary" id="issue-btn" onclick="handleIssueClick()">
+            <span class="btn-text">Review and Issue Certificate</span>
+            <div class="btn-spinner"></div>
+          </button>
+          <div class="msg" id="issue-msg"></div>
+        </div>
+
+        <!-- SESSION LOG -->
+        <div class="card">
+          <div class="card-title">Issued This Session</div>
+          <div id="issued-list">
+            <p style="font-size:0.78rem;color:var(--grey);font-style:italic;">No certificates issued yet in this session.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<footer>
+  <a href="https://khyontekai.com">khyontekai.com</a> &nbsp;&middot;&nbsp;
+  <a href="mailto:programmes@khyontekai.com">programmes@khyontekai.com</a> &nbsp;&middot;&nbsp;
+  &copy; 2026 Khyontek AI Pvt Ltd
+</footer>
+
+<script>
+  const ADMIN_ID        = "%%ADMIN_ID%%";
+  const ADMIN_PASS      = "%%ADMIN_PASS%%";
+  const GH_DISPATCH_URL = "%%GH_DISPATCH_URL%%";
+  const GH_TOKEN        = "%%GH_TOKEN%%";
+
+  let sessionIssued = [];
+  let pendingCertData = null;
+
+  function handleLogin() {
+    const id   = document.getElementById("admin-id").value.trim();
+    const pass = document.getElementById("admin-pass").value;
+    const msg  = document.getElementById("login-msg");
+    if (id===ADMIN_ID && pass===ADMIN_PASS) {
+      document.getElementById("login-screen").style.display="none";
+      document.getElementById("admin-screen").style.display="block";
+      msg.className="msg";
+    } else {
+      msg.textContent="Invalid credentials. Access denied.";
+      msg.className="msg error";
+    }
+  }
+
+  function updateCertId() {
+    const pv=document.getElementById("f-prog").value;
+    const s=document.getElementById("f-serial").value;
+    const p=document.getElementById("cert-id-preview");
+    if(!pv||!s){p.textContent="Fill programme and serial number";return;}
+    const yr=new Date().getFullYear().toString().slice(-2);
+    p.textContent=`KAI-${pv.split("|")[0]}-${yr}${String(parseInt(s)).padStart(4,"0")}`;
+  }
+
+  function toggleCustomTrack() {
+    const v=document.getElementById("f-track").value;
+    document.getElementById("custom-track-group").style.display=(v==="__custom__")?"block":"none";
+  }
+
+  function getTrackValue() {
+    const v=document.getElementById("f-track").value;
+    if(v==="__custom__") return document.getElementById("f-custom-track").value.trim();
+    return v;
+  }
+
+  function handleIssueClick() {
+    const msg=document.getElementById("issue-msg");
+    msg.className="msg";
+
+    const name    = document.getElementById("f-name").value.trim();
+    const email   = document.getElementById("f-email").value.trim();
+    const progVal = document.getElementById("f-prog").value;
+    const track   = getTrackValue();
+    const tier    = document.getElementById("f-tier").value;
+    const duration= document.getElementById("f-duration").value.trim();
+    const start   = document.getElementById("f-start").value;
+    const end     = document.getElementById("f-end").value;
+    const serial  = document.getElementById("f-serial").value;
+    const certId  = document.getElementById("cert-id-preview").textContent;
+
+    // Validate
+    const errors=[];
+    if(!name)     errors.push("Full name required");
+    if(!email||!email.includes("@")) errors.push("Valid email required");
+    if(!progVal)  errors.push("Programme required");
+    if(!track)    errors.push("Track required");
+    if(!tier)     errors.push("Tier required");
+    if(!duration) errors.push("Duration required");
+    if(!start)    errors.push("Start date required");
+    if(!end)      errors.push("End date required");
+    if(!serial)   errors.push("Serial number required");
+    if(certId.includes("Fill")) errors.push("Certificate ID not generated — fill programme and serial");
+
+    if(errors.length>0){msg.textContent=errors.join(" · ");msg.className="msg error";return;}
+
+    const c1name=document.getElementById("c1-name").value.trim();
+    const c2name=document.getElementById("c2-name").value.trim();
+    const c3name=document.getElementById("c3-name").value.trim();
+    const collabs=[c1name,c2name,c3name].filter(Boolean);
+
+    // Build cert data
+    pendingCertData={
+      cert_id:       certId,
+      recipient_name:name,
+      email:         email,
+      programme:     progVal.split("|")[1],
+      cohort:        document.getElementById("f-cohort").value.trim()||"Cohort 01",
+      track:         track,
+      tier:          tier,
+      duration:      duration,
+      start_date:    start,
+      issue_date:    end,
+      show_njk_signature: document.getElementById("f-njk-sig").checked,
+      collab_1_name: c1name,
+      collab_1_logo: document.getElementById("c1-logo").value.trim(),
+      collab_1_sig_name: document.getElementById("c1-sig-name").value.trim(),
+      collab_1_sig_title:document.getElementById("c1-sig-title").value.trim(),
+      collab_2_name: c2name,
+      collab_2_logo: document.getElementById("c2-logo").value.trim(),
+      collab_2_sig_name: document.getElementById("c2-sig-name").value.trim(),
+      collab_2_sig_title:document.getElementById("c2-sig-title").value.trim(),
+      collab_3_name: c3name,
+      collab_3_logo: document.getElementById("c3-logo").value.trim(),
+      collab_3_sig_name: document.getElementById("c3-sig-name").value.trim(),
+      collab_3_sig_title:document.getElementById("c3-sig-title").value.trim(),
+      payment:{
+        status:   document.getElementById("f-pay-status").value,
+        mode:     document.getElementById("f-pay-mode").value,
+        amount:   parseInt(document.getElementById("f-pay-amount").value)||0,
+        reference:document.getElementById("f-pay-ref").value.trim(),
+        date:     end
+      }
+    };
+
+    // Show confirmation modal
+    showConfirmModal(pendingCertData, collabs);
+  }
+
+  function showConfirmModal(d, collabs) {
+    const fmt=s=>{try{const dt=new Date(s);return dt.toLocaleDateString("en-IN",{day:"numeric",month:"long",year:"numeric"});}catch{return s;}};
+    const rows=[
+      ["Certificate ID",`<strong style="color:#1A2870">${d.cert_id}</strong>`],
+      ["Recipient Name", d.recipient_name],
+      ["Email", d.email],
+      ["Programme", d.programme],
+      ["Track", d.track],
+      ["Tier", d.tier],
+      ["Duration", d.duration],
+      ["Dates", `${fmt(d.start_date)} to ${fmt(d.issue_date)}`],
+    ];
+    if(collabs.length>0) rows.push(["Collaborators", collabs.join(", ")]);
+    if(d.show_njk_signature) rows.push(["Signatures", "Dr Pritam Deka + NJK"]);
+    if(d.payment.status!=="Not Applicable") rows.push(["Payment", `${d.payment.status} · ₹${d.payment.amount} · ${d.payment.mode}`]);
+
+    document.getElementById("modal-table").innerHTML=rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join("");
+    document.getElementById("modal-overlay").classList.add("show");
+  }
+
+  function closeModal() {
+    document.getElementById("modal-overlay").classList.remove("show");
+    pendingCertData=null;
+  }
+
+  async function confirmIssue() {
+    if(!pendingCertData) return;
+    closeModal();
+
+    const btn=document.getElementById("issue-btn");
+    const msg=document.getElementById("issue-msg");
+    btn.disabled=true; btn.classList.add("loading");
+
+    try {
+      const resp=await fetch(GH_DISPATCH_URL,{
+        method:"POST",
+        headers:{"Authorization":`token ${GH_TOKEN}`,"Content-Type":"application/json","Accept":"application/vnd.github.v3+json"},
+        body:JSON.stringify({event_type:"issue_certificate",client_payload:pendingCertData})
+      });
+
+      if(resp.status===204||resp.ok) {
+        msg.textContent=`Certificate ${pendingCertData.cert_id} queued for ${pendingCertData.recipient_name}. PDF will be generated and emailed within 2 minutes.`;
+        msg.className="msg success";
+        sessionIssued.unshift(pendingCertData);
+        renderIssuedList();
+        document.getElementById("f-serial").value="";
+        updateCertId();
+      } else {
+        const err=await resp.text();
+        msg.textContent=`Error ${resp.status}: ${err}`;
+        msg.className="msg error";
+      }
+    } catch(e) {
+      msg.textContent=`Network error: ${e.message}`;
+      msg.className="msg error";
+    } finally {
+      btn.disabled=false; btn.classList.remove("loading");
+      pendingCertData=null;
+    }
+  }
+
+  function renderIssuedList() {
+    const list=document.getElementById("issued-list");
+    if(!sessionIssued.length){
+      list.innerHTML="<p style="font-size:0.78rem;color:var(--grey);font-style:italic;">No certificates issued yet in this session.</p>";
+      return;
+    }
+    list.innerHTML=sessionIssued.map(c=>{
+      const collabs=[c.collab_1_name,c.collab_2_name,c.collab_3_name].filter(Boolean);
+      const collabText=collabs.length?` · With: ${collabs.join(", ")}`:"";
+      const payText=c.payment?.status!=="Not Applicable"?` · ${c.payment.status} ₹${c.payment.amount}`:"";
+      return `<div class="issued-item">
+        <div>
+          <div class="issued-name">${c.recipient_name}</div>
+          <div class="issued-meta">${c.cert_id} · ${c.email}${collabText}${payText}</div>
+        </div>
+        <span class="tier-badge ${c.tier==="Research Contribution"?"tier-rc":"tier-cc"}">${c.tier}</span>
+      </div>`;
+    }).join("");
+  }
+
+  document.addEventListener("keydown",e=>{
+    if(e.key==="Enter"&&document.getElementById("login-screen").style.display!=="none") handleLogin();
+    if(e.key==="Escape") closeModal();
+  });
+</script>
+</body>
+</html>

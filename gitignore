@@ -1,0 +1,13 @@
+.env.local
+.env.local.save
+node_modules/
+.vercel/
+generated/
+__pycache__/
+*.pyc
+.DS_Store
+*.numbers
+*.docx
+*.pdf
+package-lock.json
+students_template.csv

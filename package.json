@@ -1,0 +1,16 @@
+{
+  "name": "khyontek-verify",
+  "version": "2.0.0",
+  "description": "Certificate verification portal — Khyontek AI Pvt Ltd",
+  "type": "module",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  },
+  "dependencies": {
+    "mongodb": "^6.5.0"
+  },
+  "devDependencies": {
+    "vercel": "^34.0.0"
+  }
+}
