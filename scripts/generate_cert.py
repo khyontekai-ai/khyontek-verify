@@ -10,6 +10,8 @@ from reportlab.pdfgen import canvas as rlcanvas
 from reportlab.lib.utils import ImageReader
 from io import BytesIO
 from datetime import datetime
+import urllib.request
+import tempfile
 
 SCRIPT_DIR  = os.path.dirname(os.path.abspath(__file__))
 FONT_DIR    = os.path.join(SCRIPT_DIR, 'fonts')
@@ -40,13 +42,20 @@ def fmt_date(ds):
     except: return ds
 
 def load_img(path, target_h):
-    if not path or not os.path.exists(path): return None
+    """Load image from local path or URL, resize to target height."""
+    if not path: return None
     try:
-        img=Image.open(path).convert("RGBA")
-        w=int(img.width*target_h/img.height)
-        img=img.resize((w,target_h),Image.LANCZOS)
-        bg=Image.new("RGB",img.size,WHITE)
-        bg.paste(img,mask=img.split()[3])
+        if path.startswith("http://") or path.startswith("https://"):
+            # Fetch from URL (R2 or any public URL)
+            with urllib.request.urlopen(path, timeout=10) as resp:
+                img = Image.open(resp).convert("RGBA")
+        else:
+            if not os.path.exists(path): return None
+            img = Image.open(path).convert("RGBA")
+        w = int(img.width * target_h / img.height)
+        img = img.resize((w, target_h), Image.LANCZOS)
+        bg = Image.new("RGB", img.size, WHITE)
+        bg.paste(img, mask=img.split()[3])
         return bg
     except Exception as e:
         print(f"WARNING: Could not load image {path}: {e}")
@@ -82,12 +91,19 @@ def generate(data):
     # Parse data
     collabs=[]
     for i in range(1,4):
-        name=data.get(f'collab_{i}_name','').strip()
-        logo_file=data.get(f'collab_{i}_logo','').strip()
-        sig_name=data.get(f'collab_{i}_sig_name','').strip()
-        sig_title=data.get(f'collab_{i}_sig_title','').strip()
+        name      = data.get(f'collab_{i}_name','').strip()
+        logo_file = data.get(f'collab_{i}_logo','').strip()
+        logo_url  = data.get(f'collab_{i}_logo_url','').strip()
+        sig_name  = data.get(f'collab_{i}_sig_name','').strip()
+        sig_title = data.get(f'collab_{i}_sig_title','').strip()
         if name:
-            logo_path=os.path.join(COLLAB_DIR,logo_file) if logo_file else None
+            # Prefer URL (from R2), fall back to local file
+            if logo_url:
+                logo_path = logo_url
+            elif logo_file:
+                logo_path = os.path.join(COLLAB_DIR, logo_file)
+            else:
+                logo_path = None
             collabs.append({'name':name,'logo_path':logo_path,'sig_name':sig_name,'sig_title':sig_title})
 
     show_njk  =data.get('show_njk_signature',False)
@@ -232,20 +248,24 @@ def generate(data):
     d.rectangle([PAD,SIG_DIVIDER_Y,W-PAD,SIG_DIVIDER_Y+2],fill=LGREY)
 
     sigs=[]
-    # Try pre-rendered PNG first, fall back to font rendering
-    sig_p_img=load_img(SIG_PRITAM,SIG_IMG_H)
+    # Load signatures — try R2 URL first, then local PNG, then font rendering
+    pritam_url = data.get('pritam_sig_url','').strip()
+    sig_p_img  = load_img(pritam_url, SIG_IMG_H) if pritam_url else None
+    if not sig_p_img: sig_p_img = load_img(SIG_PRITAM, SIG_IMG_H)
     if not sig_p_img:
-        sig_p_img=make_sig_png("Pritam Deka",
+        sig_p_img = make_sig_png("Pritam Deka",
             os.path.join(FONT_DIR,"BrittanySignature.ttf"),
-            size=90,max_w=340,max_h=SIG_IMG_H)
+            size=90, max_w=340, max_h=SIG_IMG_H)
     sigs.append({'img':sig_p_img,'name':'Dr Pritam Deka','title':'CEO, Khyontek AI'})
 
     if show_njk:
-        sig_n_img=load_img(SIG_NJK,SIG_IMG_H)
+        njk_url   = data.get('njk_sig_url','').strip()
+        sig_n_img = load_img(njk_url, SIG_IMG_H) if njk_url else None
+        if not sig_n_img: sig_n_img = load_img(SIG_NJK, SIG_IMG_H)
         if not sig_n_img:
-            sig_n_img=make_sig_png("Nayan J Kalita",
+            sig_n_img = make_sig_png("Nayan J Kalita",
                 os.path.join(FONT_DIR,"TheRichJulliettaDemo.ttf"),
-                size=85,max_w=340,max_h=SIG_IMG_H)
+                size=85, max_w=340, max_h=SIG_IMG_H)
         sigs.append({'img':sig_n_img,'name':'Nayan Jyoti Kalita','title':'CSO, Khyontek AI'})
 
     for c in collabs:
