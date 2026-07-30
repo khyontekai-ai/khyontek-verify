@@ -96,6 +96,7 @@ def generate(data):
         logo_url  = data.get(f'collab_{i}_logo_url','').strip()
         sig_name  = data.get(f'collab_{i}_sig_name','').strip()
         sig_title = data.get(f'collab_{i}_sig_title','').strip()
+        sig_url   = data.get(f'collab_{i}_sig_url','').strip()
         if name:
             # Prefer URL (from R2), fall back to local file
             if logo_url:
@@ -104,7 +105,11 @@ def generate(data):
                 logo_path = os.path.join(COLLAB_DIR, logo_file)
             else:
                 logo_path = None
-            collabs.append({'name':name,'logo_path':logo_path,'sig_name':sig_name,'sig_title':sig_title})
+            collabs.append({
+                'name':name, 'logo_path':logo_path,
+                'sig_name':sig_name, 'sig_title':sig_title,
+                'sig_url':sig_url,
+            })
 
     show_njk  =data.get('show_njk_signature',False)
     duration  =data.get('duration','').strip()
@@ -270,7 +275,15 @@ def generate(data):
 
     for c in collabs:
         if c.get('sig_name'):
-            sigs.append({'img':None,'name':c['sig_name'],'title':c.get('sig_title','')})
+            # Try R2 URL first, fall back to font text
+            collab_sig_img = None
+            if c.get('sig_url'):
+                collab_sig_img = load_img(c['sig_url'], SIG_IMG_H)
+            sigs.append({
+                'img':   collab_sig_img,
+                'name':  c['sig_name'],
+                'title': c.get('sig_title',''),
+            })
 
     n_sigs=len(sigs)
     actual_slot=min(480,(W-PAD*2)//max(n_sigs,1))
@@ -282,7 +295,20 @@ def generate(data):
         if sig.get('img'):
             img.paste(sig['img'],(sx,SIG_Y)); rule_y=SIG_Y+SIG_IMG_H+14
         else:
-            d.text((sx,SIG_Y),sig['name'].split()[0],font=fSH,fill=NAVY); rule_y=SIG_Y+80
+            # Fallback — render name in Brittany Signature font
+            fb_img = make_sig_png(
+                sig['name'],
+                os.path.join(FONT_DIR, "BrittanySignature.ttf"),
+                size=90, max_w=340, max_h=SIG_IMG_H, color=NAVY
+            )
+            if fb_img:
+                img.paste(fb_img, (sx, SIG_Y))
+                rule_y = SIG_Y + SIG_IMG_H + 14
+            else:
+                # Last resort — plain text
+                fSH = font("NothingYouCouldDo-Regular.ttf", 68)
+                d.text((sx, SIG_Y), sig['name'].split()[0], font=fSH, fill=NAVY)
+                rule_y = SIG_Y + 80
         d.rectangle([sx,rule_y,sx+280,rule_y+3],fill=NAVY)
         d.text((sx,rule_y+12),sig['name'],font=fSN,fill=BLK)
         d.text((sx,rule_y+52),sig['title'],font=fSS,fill=GREY)
