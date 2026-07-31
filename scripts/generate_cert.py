@@ -312,8 +312,9 @@ def generate(data):
 
     # ── BODY TEXT ──
     fBo=font("Lora-Regular.ttf",40); fBi=font("Lora-Italic.ttf",40)
-    if collabs:
-        org_line=f"offered by Khyontek AI Pvt Ltd in collaboration with {' and '.join(c['name'] for c in collabs)},"
+    named_collabs=[c['name'].strip() for c in collabs if c.get('name','').strip()]
+    if named_collabs:
+        org_line=f"offered by Khyontek AI Pvt Ltd in collaboration with {' and '.join(named_collabs)},"
     else:
         org_line="offered by Khyontek AI Pvt Ltd,"
     lines=[(f"has successfully completed the {programme}",fBo),(org_line,fBo),
