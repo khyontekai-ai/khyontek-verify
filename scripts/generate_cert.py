@@ -198,6 +198,14 @@ def generate(data):
                     'sig_name':sig_name,'sig_title':sig_title,'sig_url':sig_url})
 
     show_njk   = meta.get('show_njk_signature', data.get('show_njk_signature', False))
+
+    # DEBUG — print exactly what we received
+    print(f"DEBUG cert_id: {data.get('cert_id','')}")
+    print(f"DEBUG show_njk: {show_njk}")
+    print(f"DEBUG meta keys: {list(meta.keys())}")
+    print(f"DEBUG collaborators in meta: {len(meta.get('collaborators',[]))}")
+    for i,c in enumerate(meta.get('collaborators',[])):
+        print(f"DEBUG collab[{i}]: name={c.get('name','')} logo_key={c.get('logo_key','')} sig_name={c.get('sig_name','')} sig_key={c.get('sig_key','')}")
     duration   = data.get('duration','').strip()
     cert_id    = data.get('cert_id','KAI-SRIP-260001')
     end_date   = data.get('issue_date','')
