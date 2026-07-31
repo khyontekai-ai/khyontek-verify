@@ -170,7 +170,8 @@ def generate(data):
         # New nested format with R2 keys
         for i, c in enumerate(meta_collabs[:3]):
             name = c.get('name','').strip()
-            if name:
+            sig_name_check = c.get('sig_name','').strip()
+            if name or sig_name_check:  # include if has name OR signatory
                 collabs.append({
                     'name':     name,
                     'logo_key': c.get('logo_key',''),
@@ -190,7 +191,8 @@ def generate(data):
             sig_name  = data.get(f'collab_{i}_sig_name','').strip()
             sig_title = data.get(f'collab_{i}_sig_title','').strip()
             sig_url   = data.get(f'collab_{i}_sig_url','').strip()
-            if name:
+            sig_name_leg = data.get(f'collab_{i}_sig_name','').strip()
+            if name or sig_name_leg:  # include if has name OR signatory
                 if logo_url: logo_path = logo_url
                 elif logo_file: logo_path = os.path.join(COLLAB_DIR, logo_file)
                 else: logo_path = None
@@ -199,13 +201,6 @@ def generate(data):
 
     show_njk   = meta.get('show_njk_signature', data.get('show_njk_signature', False))
 
-    # DEBUG — print exactly what we received
-    print(f"DEBUG cert_id: {data.get('cert_id','')}")
-    print(f"DEBUG show_njk: {show_njk}")
-    print(f"DEBUG meta keys: {list(meta.keys())}")
-    print(f"DEBUG collaborators in meta: {len(meta.get('collaborators',[]))}")
-    for i,c in enumerate(meta.get('collaborators',[])):
-        print(f"DEBUG collab[{i}]: name={c.get('name','')} logo_key={c.get('logo_key','')} sig_name={c.get('sig_name','')} sig_key={c.get('sig_key','')}")
     duration   = data.get('duration','').strip()
     cert_id    = data.get('cert_id','KAI-SRIP-260001')
     end_date   = data.get('issue_date','')
