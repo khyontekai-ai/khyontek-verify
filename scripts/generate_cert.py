@@ -287,7 +287,8 @@ def generate(data):
                 cx_pos+=clogo.width+60  # no institution name below logo
 
     # ── CERT ID + DATE ──
-    RULE_Y = STRIP_TOP + LOGO_H + 12
+    RULE_Y  = STRIP_TOP + LOGO_H + 12
+    TITLE_Y = RULE_Y + 30
     fM=font("WorkSans-Regular.ttf",34)
     d.text((W-PAD-get_tw(d,f"Certificate ID: {cert_id}",fM),STRIP_TOP+30),f"Certificate ID: {cert_id}",font=fM,fill=DGREY)
     d.text((W-PAD-get_tw(d,f"Date: {fmt_date(end_date)}",fM),STRIP_TOP+76),f"Date: {fmt_date(end_date)}",font=fM,fill=GREY)
