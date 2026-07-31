@@ -255,7 +255,7 @@ def generate(data):
     d.rectangle([0,0,W,8],fill=GOLD)
 
     # ── LOGO STRIP — only collabs with a logo (independent of signatures) ──
-    LOGO_H=240; COLLAB_H=180; STRIP_TOP=20; MAX_COLLAB_LOGO_W=260
+    LOGO_H=300; COLLAB_H=220; STRIP_TOP=10; MAX_COLLAB_LOGO_W=320
 
     kai=load_img(LOGO_PATH,LOGO_H)
     if kai: img.paste(kai,(PAD,STRIP_TOP)); kai_right=PAD+kai.width
@@ -267,13 +267,13 @@ def generate(data):
     collabs_with_logo=[c for c in collabs if c.get('logo_key') or c.get('logo_b64') or c.get('logo_path')]
     if collabs_with_logo:
         SEP_X=kai_right+50
-        d.rectangle([SEP_X,STRIP_TOP+24,SEP_X+3,STRIP_TOP+LOGO_H-24],fill=GOLD)
-        fAssoc=font("WorkSans-Regular.ttf",24); assoc="In association with"
+        d.rectangle([SEP_X,STRIP_TOP+30,SEP_X+4,STRIP_TOP+LOGO_H-30],fill=GOLD)
+        fAssoc=font("WorkSans-Regular.ttf",28); assoc="In association with"
         aw=get_tw(d,assoc,fAssoc)
         tmp2=Image.new("RGBA",(aw+10,30),(255,255,255,0)); td2=ImageDraw.Draw(tmp2)
         td2.text((0,0),assoc,font=fAssoc,fill=GREY); rot=tmp2.rotate(90,expand=True)
         img.paste(rot,(SEP_X-rot.width//2-8,STRIP_TOP+(LOGO_H-rot.height)//2),rot)
-        cx_pos=SEP_X+65
+        cx_pos=SEP_X+80
         for c in collabs_with_logo:
             # Try R2 key → base64 → local path
             clogo = load_r2_img(c.get('logo_key',''), COLLAB_H)
@@ -284,14 +284,14 @@ def generate(data):
                     clogo=clogo.resize((MAX_COLLAB_LOGO_W,COLLAB_H),Image.LANCZOS)
                 logo_y=STRIP_TOP+(LOGO_H-COLLAB_H)//2
                 img.paste(clogo,(cx_pos,logo_y))
-                cx_pos+=clogo.width+60  # no institution name below logo
+                cx_pos+=clogo.width+70
 
     # ── CERT ID + DATE ──
     RULE_Y  = STRIP_TOP + LOGO_H + 12
-    TITLE_Y = RULE_Y + 30
+    TITLE_Y = RULE_Y + 28
     fM=font("WorkSans-Regular.ttf",34)
-    d.text((W-PAD-get_tw(d,f"Certificate ID: {cert_id}",fM),STRIP_TOP+30),f"Certificate ID: {cert_id}",font=fM,fill=DGREY)
-    d.text((W-PAD-get_tw(d,f"Date: {fmt_date(end_date)}",fM),STRIP_TOP+76),f"Date: {fmt_date(end_date)}",font=fM,fill=GREY)
+    d.text((W-PAD-get_tw(d,f"Certificate ID: {cert_id}",fM),STRIP_TOP+40),f"Certificate ID: {cert_id}",font=fM,fill=DGREY)
+    d.text((W-PAD-get_tw(d,f"Date: {fmt_date(end_date)}",fM),STRIP_TOP+90),f"Date: {fmt_date(end_date)}",font=fM,fill=GREY)
 
     d.rectangle([0,RULE_Y,W,RULE_Y+10],fill=GOLD); d.rectangle([0,RULE_Y+10,W,RULE_Y+20],fill=NAVY)
 
