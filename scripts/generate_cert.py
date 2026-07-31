@@ -402,7 +402,20 @@ def generate(data):
             rule_y=SIG_Y+100
         d.rectangle([sx,rule_y,sx+300,rule_y+3],fill=NAVY)
         d.text((sx,rule_y+12),truncate(d,sig['name'],fSN,max_text_w),font=fSN,fill=BLK)
-        d.text((sx,rule_y+12+name_size+8),truncate(d,sig['title'],fSS,max_text_w),font=fSS,fill=GREY)
+        # Wrap title into two lines if too long
+        title_str=sig['title']
+        if get_tw(d,title_str,fSS)<=max_text_w:
+            d.text((sx,rule_y+12+name_size+8),title_str,font=fSS,fill=GREY)
+        else:
+            # Split at comma or space closest to middle
+            words=title_str.split(' ')
+            line1=''; line2=''
+            for w in words:
+                test=line1+(' ' if line1 else '')+w
+                if get_tw(d,test,fSS)<=max_text_w: line1=test
+                else: line2=(line2+' '+w).strip()
+            d.text((sx,rule_y+12+name_size+8), line1,font=fSS,fill=GREY)
+            d.text((sx,rule_y+12+name_size+8+title_size+4),line2,font=fSS,fill=GREY)
 
     # ── FOOTER BAR — always fixed ──
     d.rectangle([0,FOOTER_BAR_Y,  W,FOOTER_BAR_Y+8],fill=GOLD)
