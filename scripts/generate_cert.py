@@ -255,7 +255,7 @@ def generate(data):
     d.rectangle([0,0,W,8],fill=GOLD)
 
     # ── LOGO STRIP — only collabs with a logo (independent of signatures) ──
-    LOGO_H=180; COLLAB_H=130; STRIP_TOP=32; MAX_COLLAB_LOGO_W=200
+    LOGO_H=240; COLLAB_H=180; STRIP_TOP=20; MAX_COLLAB_LOGO_W=260
 
     kai=load_img(LOGO_PATH,LOGO_H)
     if kai: img.paste(kai,(PAD,STRIP_TOP)); kai_right=PAD+kai.width
@@ -267,13 +267,13 @@ def generate(data):
     collabs_with_logo=[c for c in collabs if c.get('logo_key') or c.get('logo_b64') or c.get('logo_path')]
     if collabs_with_logo:
         SEP_X=kai_right+50
-        d.rectangle([SEP_X,STRIP_TOP+20,SEP_X+3,STRIP_TOP+LOGO_H-20],fill=GOLD)
+        d.rectangle([SEP_X,STRIP_TOP+24,SEP_X+3,STRIP_TOP+LOGO_H-24],fill=GOLD)
         fAssoc=font("WorkSans-Regular.ttf",24); assoc="In association with"
         aw=get_tw(d,assoc,fAssoc)
         tmp2=Image.new("RGBA",(aw+10,30),(255,255,255,0)); td2=ImageDraw.Draw(tmp2)
         td2.text((0,0),assoc,font=fAssoc,fill=GREY); rot=tmp2.rotate(90,expand=True)
         img.paste(rot,(SEP_X-rot.width//2-8,STRIP_TOP+(LOGO_H-rot.height)//2),rot)
-        cx_pos=SEP_X+55; fCNsm=font("WorkSans-Regular.ttf",22)
+        cx_pos=SEP_X+65
         for c in collabs_with_logo:
             # Try R2 key → base64 → local path
             clogo = load_r2_img(c.get('logo_key',''), COLLAB_H)
@@ -284,16 +284,15 @@ def generate(data):
                     clogo=clogo.resize((MAX_COLLAB_LOGO_W,COLLAB_H),Image.LANCZOS)
                 logo_y=STRIP_TOP+(LOGO_H-COLLAB_H)//2
                 img.paste(clogo,(cx_pos,logo_y))
-                cnw=get_tw(d,c['name'],fCNsm)
-                d.text((cx_pos+(clogo.width-cnw)//2,logo_y+COLLAB_H+8),c['name'],font=fCNsm,fill=GREY)
-                cx_pos+=clogo.width+50
+                cx_pos+=clogo.width+60  # no institution name below logo
 
     # ── CERT ID + DATE ──
+    RULE_Y = STRIP_TOP + LOGO_H + 12
     fM=font("WorkSans-Regular.ttf",34)
-    d.text((W-PAD-get_tw(d,f"Certificate ID: {cert_id}",fM),78),f"Certificate ID: {cert_id}",font=fM,fill=DGREY)
-    d.text((W-PAD-get_tw(d,f"Date: {fmt_date(end_date)}",fM),122),f"Date: {fmt_date(end_date)}",font=fM,fill=GREY)
+    d.text((W-PAD-get_tw(d,f"Certificate ID: {cert_id}",fM),STRIP_TOP+30),f"Certificate ID: {cert_id}",font=fM,fill=DGREY)
+    d.text((W-PAD-get_tw(d,f"Date: {fmt_date(end_date)}",fM),STRIP_TOP+76),f"Date: {fmt_date(end_date)}",font=fM,fill=GREY)
 
-    d.rectangle([0,256,W,266],fill=GOLD); d.rectangle([0,266,W,276],fill=NAVY)
+    d.rectangle([0,RULE_Y,W,RULE_Y+10],fill=GOLD); d.rectangle([0,RULE_Y+10,W,RULE_Y+20],fill=NAVY)
 
     # ── CERTIFICATE TITLE ──
     fBig=font("WorkSans-Bold.ttf",260)
@@ -319,7 +318,7 @@ def generate(data):
     lines=[(f"has successfully completed the {programme}",fBo),(org_line,fBo),
            ("participating in the research track:",fBo),(f"'{track}'",fBi),
            (f"from {fmt_date(start_date)} to {fmt_date(end_date)}.",fBo)]
-    y=950
+    y=TITLE_Y+620
     for txt,fnt_ in lines:
         sz=40 if get_tw(d,txt,fnt_)<W-PAD*4 else 34
         fu=font("Lora-Italic.ttf" if fnt_==fBi else "Lora-Regular.ttf",sz)
@@ -348,8 +347,8 @@ def generate(data):
            "Verify at: programmes.khyontekai.com/verify",font=fFsm,fill=BLUE)
 
     # ── SIGNATURE BLOCK — independent of logo count ──
-    SIG_IMG_H     = 90
-    SIG_DIVIDER_Y = L1_Y - 150
+    SIG_IMG_H     = 120
+    SIG_DIVIDER_Y = L1_Y - 190
     SIG_Y         = SIG_DIVIDER_Y + 14
     d.rectangle([PAD,SIG_DIVIDER_Y,W-PAD,SIG_DIVIDER_Y+2],fill=LGREY)
 
@@ -396,11 +395,10 @@ def generate(data):
         if sig.get('img'):
             img.paste(sig['img'],(sx,SIG_Y)); rule_y=SIG_Y+SIG_IMG_H+14
         else:
-            # Last resort plain text
-            fFB=font("NothingYouCouldDo-Regular.ttf",68)
+            fFB=font("NothingYouCouldDo-Regular.ttf",80)
             d.text((sx,SIG_Y),sig['name'].split()[0],font=fFB,fill=NAVY)
-            rule_y=SIG_Y+80
-        d.rectangle([sx,rule_y,sx+260,rule_y+3],fill=NAVY)
+            rule_y=SIG_Y+100
+        d.rectangle([sx,rule_y,sx+300,rule_y+3],fill=NAVY)
         d.text((sx,rule_y+12),truncate(d,sig['name'],fSN,max_text_w),font=fSN,fill=BLK)
         d.text((sx,rule_y+12+name_size+8),truncate(d,sig['title'],fSS,max_text_w),font=fSS,fill=GREY)
 
