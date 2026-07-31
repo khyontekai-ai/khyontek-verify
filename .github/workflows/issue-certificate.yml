@@ -1,0 +1,49 @@
+# Place in khyontek-verify repo at: .github/workflows/issue-certificate.yml
+
+name: Issue Certificate
+
+on:
+  repository_dispatch:
+    types: [issue-certificate]
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install pillow reportlab pymongo resend requests
+
+      - name: Generate Certificate PDF
+        run: |
+          python scripts/generate_cert.py \
+            --data '${{ toJson(github.event.client_payload) }}' \
+            --output /tmp/certificate.pdf
+
+      - name: Send certificate email
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          ADMIN_EMAIL:    ${{ secrets.ADMIN_EMAIL }}
+        run: |
+          python scripts/send_email.py \
+            --data '${{ toJson(github.event.client_payload) }}' \
+            --pdf /tmp/certificate.pdf
+
+      - name: Insert MongoDB record
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          DB_NAME:     ${{ secrets.DB_NAME }}
+          EMAIL_SALT:  ${{ secrets.EMAIL_SALT }}
+        run: |
+          python scripts/mongo_insert.py \
+            --data '${{ toJson(github.event.client_payload) }}'
