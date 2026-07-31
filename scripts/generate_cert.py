@@ -13,6 +13,8 @@ Khyontek AI — Certificate PDF Generator FINAL v6
 - URL-based image loading from Cloudflare R2
 """
 import sys, json, argparse, os, math, urllib.request, base64, tempfile, io
+import boto3
+from botocore.config import Config
 from PIL import Image, ImageDraw, ImageFont
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.pdfgen import canvas as rlcanvas
@@ -95,8 +97,6 @@ def fetch_from_r2(key):
     """Fetch image from private R2 bucket using credentials from env vars."""
     if not key: return None
     try:
-        import boto3
-        from botocore.config import Config
         account_id = os.environ.get('R2_ACCOUNT_ID','')
         access_key = os.environ.get('R2_ACCESS_KEY_ID','')
         secret_key = os.environ.get('R2_SECRET_ACCESS_KEY','')
