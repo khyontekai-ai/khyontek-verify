@@ -1,17 +1,24 @@
 #!/usr/bin/env python3
 """
-Khyontek AI — Certificate PDF Generator FINAL v5
-All features complete. Fixed layout — footer always at bottom, no overlaps.
+Khyontek AI — Certificate PDF Generator FINAL v6
+- Logo strip and signature block are fully independent
+- Up to 3 collab logos in header strip
+- Up to 5 signatories in signature block (Pritam + NJK + 3 collabs)
+- Dynamic font sizing for signature names based on signatory count
+- Text truncation prevents overflow between signature slots
+- Collab logo width capped at 200px to prevent header overflow
+- Signatures: PNG image → Brittany font fallback → NothingYouCouldDo last resort
+- Footer always fixed at bottom — never overlaps
+- Three-line right footer: CIN / DPIIT+Assam Startup / Verify URL
+- URL-based image loading from Cloudflare R2
 """
-import sys, json, argparse, os, math
+import sys, json, argparse, os, math, urllib.request
 from PIL import Image, ImageDraw, ImageFont
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.pdfgen import canvas as rlcanvas
 from reportlab.lib.utils import ImageReader
 from io import BytesIO
 from datetime import datetime
-import urllib.request
-import tempfile
 
 SCRIPT_DIR  = os.path.dirname(os.path.abspath(__file__))
 FONT_DIR    = os.path.join(SCRIPT_DIR, 'fonts')
@@ -19,6 +26,8 @@ LOGO_PATH   = os.path.join(FONT_DIR, 'logo.png')
 COLLAB_DIR  = os.path.join(FONT_DIR, 'collab-logos')
 SIG_PRITAM  = os.path.join(FONT_DIR, 'sig_pritam_deka.png')
 SIG_NJK     = os.path.join(FONT_DIR, 'sig_njk.png')
+SIG_FONT_BRITTANY = os.path.join(FONT_DIR, 'BrittanySignature.ttf')
+SIG_FONT_FALLBACK = os.path.join(FONT_DIR, 'NothingYouCouldDo-Regular.ttf')
 
 NAVY=(26,40,112); BLUE=(43,62,170); GOLD=(245,166,35)
 GREY=(130,135,150); DGREY=(50,55,85); BLK=(26,26,26)
@@ -31,8 +40,15 @@ def font(name, size):
     print(f"WARNING: Font not found: {p}")
     return ImageFont.load_default()
 
-def tw(d, t, f):
+def get_tw(d, t, f):
     b = d.textbbox((0,0), t, font=f); return b[2]-b[0]
+
+def truncate(d, text, fnt, max_w):
+    if get_tw(d, text, fnt) <= max_w: return text
+    while len(text) > 3:
+        text = text[:-1]
+        if get_tw(d, text+"…", fnt) <= max_w: return text+"…"
+    return "…"
 
 def fmt_date(ds):
     try:
@@ -42,11 +58,10 @@ def fmt_date(ds):
     except: return ds
 
 def load_img(path, target_h):
-    """Load image from local path or URL, resize to target height."""
+    """Load image from local path or HTTP/HTTPS URL. Returns PIL image or None."""
     if not path: return None
     try:
-        if path.startswith("http://") or path.startswith("https://"):
-            # Fetch from URL (R2 or any public URL)
+        if str(path).startswith("http://") or str(path).startswith("https://"):
             with urllib.request.urlopen(path, timeout=10) as resp:
                 img = Image.open(resp).convert("RGBA")
         else:
@@ -61,34 +76,29 @@ def load_img(path, target_h):
         print(f"WARNING: Could not load image {path}: {e}")
         return None
 
-def make_sig_png(text, font_path, size=90, max_w=340, max_h=90, color=NAVY):
-    """Render signature font text to PIL image at fixed height."""
-    if not os.path.exists(font_path):
+def make_sig_img(text, font_path, size=80, max_w=260, max_h=90, color=NAVY):
+    """Render signature font text to PIL image."""
+    if not os.path.exists(font_path): return None
+    try:
+        fnt = ImageFont.truetype(font_path, size)
+        tmp = Image.new("RGB",(2000,400),WHITE); dd=ImageDraw.Draw(tmp)
+        bbox=dd.textbbox((0,0),text,font=fnt); tw_=bbox[2]-bbox[0]; th_=bbox[3]-bbox[1]
+        if tw_>max_w or th_>max_h:
+            scale=min(max_w/tw_,max_h/th_); size=int(size*scale)
+            fnt=ImageFont.truetype(font_path,size)
+            bbox=dd.textbbox((0,0),text,font=fnt); tw_=bbox[2]-bbox[0]; th_=bbox[3]-bbox[1]
+        pad=14; out=Image.new("RGB",(tw_+pad*2,th_+pad*2),WHITE); d2=ImageDraw.Draw(out)
+        d2.text((pad-bbox[0],pad-bbox[1]),text,font=fnt,fill=color)
+        return out
+    except Exception as e:
+        print(f"WARNING: Could not render sig text: {e}")
         return None
-    fnt  = ImageFont.truetype(font_path, size)
-    tmp  = Image.new("RGB",(2000,400),WHITE)
-    dd   = ImageDraw.Draw(tmp)
-    bbox = dd.textbbox((0,0), text, font=fnt)
-    tw_  = bbox[2]-bbox[0]; th_=bbox[3]-bbox[1]
-    if tw_ > max_w or th_ > max_h:
-        scale = min(max_w/tw_, max_h/th_)
-        size  = int(size*scale)
-        fnt   = ImageFont.truetype(font_path, size)
-        bbox  = dd.textbbox((0,0), text, font=fnt)
-        tw_   = bbox[2]-bbox[0]; th_=bbox[3]-bbox[1]
-    pad=14
-    out=Image.new("RGB",(tw_+pad*2, th_+pad*2),WHITE)
-    d2=ImageDraw.Draw(out)
-    d2.text((pad-bbox[0], pad-bbox[1]), text, font=fnt, fill=color)
-    return out
 
 def generate(data):
-    W,H=3307,2339
-    img=Image.new("RGB",(W,H),WHITE)
-    d=ImageDraw.Draw(img)
+    W,H=3307,2339; img=Image.new("RGB",(W,H),WHITE); d=ImageDraw.Draw(img)
     PAD=140; MID=W//2
 
-    # Parse data
+    # ── Parse collabs — logo and sig are INDEPENDENT ──
     collabs=[]
     for i in range(1,4):
         name      = data.get(f'collab_{i}_name','').strip()
@@ -98,7 +108,6 @@ def generate(data):
         sig_title = data.get(f'collab_{i}_sig_title','').strip()
         sig_url   = data.get(f'collab_{i}_sig_url','').strip()
         if name:
-            # Prefer URL (from R2), fall back to local file
             if logo_url:
                 logo_path = logo_url
             elif logo_file:
@@ -107,25 +116,23 @@ def generate(data):
                 logo_path = None
             collabs.append({
                 'name':name, 'logo_path':logo_path,
-                'sig_name':sig_name, 'sig_title':sig_title,
-                'sig_url':sig_url,
+                'sig_name':sig_name, 'sig_title':sig_title, 'sig_url':sig_url,
             })
 
-    show_njk  =data.get('show_njk_signature',False)
-    duration  =data.get('duration','').strip()
-    cert_id   =data.get('cert_id','KAI-SRIP-260001')
-    end_date  =data.get('issue_date','')
-    start_date=data.get('start_date','')
-    tier      =data.get('tier','Completion')
-    name_str  =data.get('recipient_name','Recipient Name')
-    programme =data.get('programme','')
-    track     =data.get('track','')
+    show_njk   = data.get('show_njk_signature', False)
+    duration   = data.get('duration','').strip()
+    cert_id    = data.get('cert_id','KAI-SRIP-260001')
+    end_date   = data.get('issue_date','')
+    start_date = data.get('start_date','')
+    tier       = data.get('tier','Completion')
+    name_str   = data.get('recipient_name','Recipient Name')
+    programme  = data.get('programme','')
+    track      = data.get('track','')
 
     # ── WATERMARKS ──
     hx,ht,hh,amp,freq=200,300,1600,70,2.8
     for i in range(119):
-        t0,t1=i/120,(i+1)/120
-        y0=ht+t0*hh; y1=ht+t1*hh
+        t0,t1=i/120,(i+1)/120; y0=ht+t0*hh; y1=ht+t1*hh
         x0a=hx+int(amp*math.sin(2*math.pi*freq*t0)); x1a=hx+int(amp*math.sin(2*math.pi*freq*t1))
         x0b=hx+int(amp*math.sin(2*math.pi*freq*t0+math.pi)); x1b=hx+int(amp*math.sin(2*math.pi*freq*t1+math.pi))
         d.line([x0a,y0,x1a,y1],fill=WMB,width=6); d.line([x0b,y0,x1b,y1],fill=WMB,width=6)
@@ -145,14 +152,12 @@ def generate(data):
         while x<W:
             d.polygon([(x,cy-13),(x+18,cy),(x,cy+13),(x-18,cy)],fill=col)
             d.rectangle([x-3,cy-22,x+3,cy-15],fill=col)
-            d.rectangle([x-3,cy+15,x+3,cy+22],fill=col)
-            x+=70
+            d.rectangle([x-3,cy+15,x+3,cy+22],fill=col); x+=70
     for wy,wa,off,wid in [(1440,10,0,4),(1458,10,0.8,3)]:
         prev=None
         for i in range(401):
             t=i/400; x=int(t*W); y=wy+int(wa*math.sin(2*math.pi*3*t+off))
-            if prev: d.line([prev,(x,y)],fill=WMG,width=wid)
-            prev=(x,y)
+            if prev: d.line([prev,(x,y)],fill=WMG,width=wid); prev=(x,y)
     for row in range(8):
         for col in range(12):
             bx=W-720+col*56; by=1760+row*46; r=5 if (row+col)%3!=0 else 9
@@ -168,158 +173,159 @@ def generate(data):
 
     d.rectangle([0,0,W,8],fill=GOLD)
 
-    # ── LOGO STRIP ──
-    LOGO_H=180; COLLAB_H=130; STRIP_TOP=32
+    # ── LOGO STRIP — only collabs with a logo (independent of signatures) ──
+    LOGO_H=180; COLLAB_H=130; STRIP_TOP=32; MAX_COLLAB_LOGO_W=200
+
     kai=load_img(LOGO_PATH,LOGO_H)
     if kai: img.paste(kai,(PAD,STRIP_TOP)); kai_right=PAD+kai.width
     else:
-        fL=font("Italiana-Regular.ttf",100); d.text((PAD,STRIP_TOP),"Khyontek.ai",font=fL,fill=BLUE); kai_right=PAD+420
-    if collabs:
+        fL=font("Italiana-Regular.ttf",100)
+        d.text((PAD,STRIP_TOP),"Khyontek.ai",font=fL,fill=BLUE); kai_right=PAD+420
+
+    collabs_with_logo=[c for c in collabs if c.get('logo_path')]
+    if collabs_with_logo:
         SEP_X=kai_right+50
         d.rectangle([SEP_X,STRIP_TOP+20,SEP_X+3,STRIP_TOP+LOGO_H-20],fill=GOLD)
         fAssoc=font("WorkSans-Regular.ttf",24); assoc="In association with"
-        aw=tw(d,assoc,fAssoc)
+        aw=get_tw(d,assoc,fAssoc)
         tmp2=Image.new("RGBA",(aw+10,30),(255,255,255,0)); td2=ImageDraw.Draw(tmp2)
         td2.text((0,0),assoc,font=fAssoc,fill=GREY); rot=tmp2.rotate(90,expand=True)
         img.paste(rot,(SEP_X-rot.width//2-8,STRIP_TOP+(LOGO_H-rot.height)//2),rot)
-        cx_pos=SEP_X+55; fCN=font("WorkSans-Regular.ttf",26); fCNsm=font("WorkSans-Regular.ttf",22)
-        for c in collabs:
+        cx_pos=SEP_X+55; fCNsm=font("WorkSans-Regular.ttf",22)
+        for c in collabs_with_logo:
             clogo=load_img(c['logo_path'],COLLAB_H)
             if clogo:
-                logo_y=STRIP_TOP+(LOGO_H-COLLAB_H)//2; img.paste(clogo,(cx_pos,logo_y))
-                logo_w=clogo.width; cnw=tw(d,c['name'],fCNsm)
-                d.text((cx_pos+(logo_w-cnw)//2,logo_y+COLLAB_H+8),c['name'],font=fCNsm,fill=GREY)
-                cx_pos+=logo_w+50
-            else:
-                d.text((cx_pos,STRIP_TOP+(LOGO_H-40)//2),c['name'],font=fCN,fill=NAVY)
-                cx_pos+=tw(d,c['name'],fCN)+60
+                if clogo.width>MAX_COLLAB_LOGO_W:
+                    clogo=clogo.resize((MAX_COLLAB_LOGO_W,COLLAB_H),Image.LANCZOS)
+                logo_y=STRIP_TOP+(LOGO_H-COLLAB_H)//2
+                img.paste(clogo,(cx_pos,logo_y))
+                cnw=get_tw(d,c['name'],fCNsm)
+                d.text((cx_pos+(clogo.width-cnw)//2,logo_y+COLLAB_H+8),c['name'],font=fCNsm,fill=GREY)
+                cx_pos+=clogo.width+50
 
-    # Cert ID + Date
+    # ── CERT ID + DATE ──
     fM=font("WorkSans-Regular.ttf",34)
-    d.text((W-PAD-tw(d,f"Certificate ID: {cert_id}",fM),78),f"Certificate ID: {cert_id}",font=fM,fill=DGREY)
-    d.text((W-PAD-tw(d,f"Date: {fmt_date(end_date)}",fM),122),f"Date: {fmt_date(end_date)}",font=fM,fill=GREY)
+    d.text((W-PAD-get_tw(d,f"Certificate ID: {cert_id}",fM),78),f"Certificate ID: {cert_id}",font=fM,fill=DGREY)
+    d.text((W-PAD-get_tw(d,f"Date: {fmt_date(end_date)}",fM),122),f"Date: {fmt_date(end_date)}",font=fM,fill=GREY)
+
     d.rectangle([0,256,W,266],fill=GOLD); d.rectangle([0,266,W,276],fill=NAVY)
 
+    # ── CERTIFICATE TITLE ──
     fBig=font("WorkSans-Bold.ttf",260)
-    d.text((MID-tw(d,"Certificate",fBig)//2,290),"Certificate",font=fBig,fill=NAVY)
+    d.text((MID-get_tw(d,"Certificate",fBig)//2,290),"Certificate",font=fBig,fill=NAVY)
     tier_line='OF COMPLETION' if tier=='Completion' else 'OF RESEARCH CONTRIBUTION'
     fTier=font("WorkSans-Bold.ttf",76)
-    d.text((MID-tw(d,tier_line,fTier)//2,576),tier_line,font=fTier,fill=NAVY)
+    d.text((MID-get_tw(d,tier_line,fTier)//2,576),tier_line,font=fTier,fill=NAVY)
     d.rectangle([MID-340,680,MID+340,688],fill=GOLD)
     fC=font("Lora-Italic.ttf",46)
-    d.text((MID-tw(d,"This is to certify that",fC)//2,710),"This is to certify that",font=fC,fill=GREY)
-    fN=font("Lora-BoldItalic.ttf",96); nw=tw(d,name_str,fN)
+    d.text((MID-get_tw(d,"This is to certify that",fC)//2,710),"This is to certify that",font=fC,fill=GREY)
+
+    # ── RECIPIENT NAME ──
+    fN=font("Lora-BoldItalic.ttf",96); nw=get_tw(d,name_str,fN)
     d.text((MID-nw//2,790),name_str,font=fN,fill=NAVY)
     ul=min(nw//2+130,660); d.rectangle([MID-ul,910,MID+ul,916],fill=NAVY)
 
+    # ── BODY TEXT ──
     fBo=font("Lora-Regular.ttf",40); fBi=font("Lora-Italic.ttf",40)
-    org_line=(f"offered by Khyontek AI Pvt Ltd in collaboration with {' and '.join(c['name'] for c in collabs)},"
-              if collabs else "offered by Khyontek AI Pvt Ltd,")
+    if collabs:
+        org_line=f"offered by Khyontek AI Pvt Ltd in collaboration with {' and '.join(c['name'] for c in collabs)},"
+    else:
+        org_line="offered by Khyontek AI Pvt Ltd,"
     lines=[(f"has successfully completed the {programme}",fBo),(org_line,fBo),
            ("participating in the research track:",fBo),(f"'{track}'",fBi),
            (f"from {fmt_date(start_date)} to {fmt_date(end_date)}.",fBo)]
     y=950
     for txt,fnt_ in lines:
-        sz=40 if tw(d,txt,fnt_)<W-PAD*4 else 34
+        sz=40 if get_tw(d,txt,fnt_)<W-PAD*4 else 34
         fu=font("Lora-Italic.ttf" if fnt_==fBi else "Lora-Regular.ttf",sz)
-        d.text((MID-tw(d,txt,fu)//2,y),txt,font=fu,fill=BLK); y+=sz+18
+        d.text((MID-get_tw(d,txt,fu)//2,y),txt,font=fu,fill=BLK); y+=sz+18
     if duration:
         fDur=font("Lora-Italic.ttf",36); dur_txt=f"Duration: {duration}"
-        d.text((MID-tw(d,dur_txt,fDur)//2,y+6),dur_txt,font=fDur,fill=GREY); y+=52
+        d.text((MID-get_tw(d,dur_txt,fDur)//2,y+6),dur_txt,font=fDur,fill=GREY); y+=52
     fW=font("Lora-Italic.ttf",36); wish="With best wishes for a future defined by curiosity and contribution."
-    d.text((MID-tw(d,wish,fW)//2,y+16),wish,font=fW,fill=GREY)
+    d.text((MID-get_tw(d,wish,fW)//2,y+16),wish,font=fW,fill=GREY)
 
-    # ── FIXED LAYOUT — footer at bottom, text above it, sigs above that ──
-    FOOTER_BAR_Y  = 2260   # always fixed
+    # ── FIXED LAYOUT — footer always at bottom ──
+    FOOTER_BAR_Y  = 2260
     FOOTER_TEXT_Y = FOOTER_BAR_Y + 18
 
-    # Three info lines placed working UP from footer bar
+    # Three info lines — placed working UP from footer bar
     fF=font("WorkSans-Regular.ttf",26); fFsm=font("WorkSans-Regular.ttf",24)
-    LINE_GAP = 42
-    L3_Y = FOOTER_BAR_Y - 24 - LINE_GAP      # verify URL
-    L2_Y = L3_Y - LINE_GAP                    # recognitions
-    L1_Y = L2_Y - LINE_GAP                    # CIN
-    line1="CIN: U62020AS2026PTC029657"
-    line2="DPIIT Recognised  ·  Assam Startup Recognised"
-    line3="Verify at: programmes.khyontekai.com/verify"
-    d.text((W-PAD-tw(d,line1,fF),  L1_Y),line1,font=fF,  fill=GREY)
-    d.text((W-PAD-tw(d,line2,fFsm),L2_Y),line2,font=fFsm,fill=GREY)
-    d.text((W-PAD-tw(d,line3,fFsm),L3_Y),line3,font=fFsm,fill=BLUE)
+    LINE_GAP=42
+    L3_Y=FOOTER_BAR_Y-24-LINE_GAP   # Verify URL
+    L2_Y=L3_Y-LINE_GAP               # DPIIT + Assam Startup
+    L1_Y=L2_Y-LINE_GAP               # CIN
+    d.text((W-PAD-get_tw(d,"CIN: U62020AS2026PTC029657",fF),L1_Y),
+           "CIN: U62020AS2026PTC029657",font=fF,fill=GREY)
+    d.text((W-PAD-get_tw(d,"DPIIT Recognised  ·  Assam Startup Recognised",fFsm),L2_Y),
+           "DPIIT Recognised  ·  Assam Startup Recognised",font=fFsm,fill=GREY)
+    d.text((W-PAD-get_tw(d,"Verify at: programmes.khyontekai.com/verify",fFsm),L3_Y),
+           "Verify at: programmes.khyontekai.com/verify",font=fFsm,fill=BLUE)
 
-    # Signature block placed above info lines
+    # ── SIGNATURE BLOCK — independent of logo count ──
     SIG_IMG_H     = 90
     SIG_DIVIDER_Y = L1_Y - 150
     SIG_Y         = SIG_DIVIDER_Y + 14
     d.rectangle([PAD,SIG_DIVIDER_Y,W-PAD,SIG_DIVIDER_Y+2],fill=LGREY)
 
     sigs=[]
-    # Load signatures — try R2 URL first, then local PNG, then font rendering
+
+    # Pritam — always first
+    # Priority: R2 URL → local PNG → Brittany font → NothingYouCouldDo
     pritam_url = data.get('pritam_sig_url','').strip()
-    sig_p_img  = load_img(pritam_url, SIG_IMG_H) if pritam_url else None
-    if not sig_p_img: sig_p_img = load_img(SIG_PRITAM, SIG_IMG_H)
-    if not sig_p_img:
-        sig_p_img = make_sig_png("Pritam Deka",
-            os.path.join(FONT_DIR,"BrittanySignature.ttf"),
-            size=90, max_w=340, max_h=SIG_IMG_H)
-    sigs.append({'img':sig_p_img,'name':'Dr Pritam Deka','title':'CEO, Khyontek AI'})
+    sig_p = load_img(pritam_url,SIG_IMG_H) if pritam_url else None
+    if not sig_p: sig_p = load_img(SIG_PRITAM,SIG_IMG_H)
+    if not sig_p: sig_p = make_sig_img("Pritam Deka",SIG_FONT_BRITTANY,size=90,max_w=300,max_h=SIG_IMG_H)
+    sigs.append({'img':sig_p,'name':'Dr Pritam Deka','title':'CEO, Khyontek AI'})
 
+    # NJK — if toggled
     if show_njk:
-        njk_url   = data.get('njk_sig_url','').strip()
-        sig_n_img = load_img(njk_url, SIG_IMG_H) if njk_url else None
-        if not sig_n_img: sig_n_img = load_img(SIG_NJK, SIG_IMG_H)
-        if not sig_n_img:
-            sig_n_img = make_sig_png("Nayan J Kalita",
-                os.path.join(FONT_DIR,"TheRichJulliettaDemo.ttf"),
-                size=85, max_w=340, max_h=SIG_IMG_H)
-        sigs.append({'img':sig_n_img,'name':'Nayan Jyoti Kalita','title':'CSO, Khyontek AI'})
+        njk_url = data.get('njk_sig_url','').strip()
+        sig_n = load_img(njk_url,SIG_IMG_H) if njk_url else None
+        if not sig_n: sig_n = load_img(SIG_NJK,SIG_IMG_H)
+        if not sig_n: sig_n = make_sig_img("Nayan J Kalita",SIG_FONT_BRITTANY,size=85,max_w=300,max_h=SIG_IMG_H)
+        sigs.append({'img':sig_n,'name':'Nayan Jyoti Kalita','title':'CSO, Khyontek AI'})
 
+    # Collab signatories — only if sig_name provided, independent of logo
     for c in collabs:
         if c.get('sig_name'):
-            # Try R2 URL first, fall back to font text
-            collab_sig_img = None
-            if c.get('sig_url'):
-                collab_sig_img = load_img(c['sig_url'], SIG_IMG_H)
-            sigs.append({
-                'img':   collab_sig_img,
-                'name':  c['sig_name'],
-                'title': c.get('sig_title',''),
-            })
+            # Priority: R2 URL → Brittany font → NothingYouCouldDo
+            cb_img = load_img(c.get('sig_url',''),SIG_IMG_H) if c.get('sig_url') else None
+            if not cb_img:
+                cb_img = make_sig_img(c['sig_name'],SIG_FONT_BRITTANY,size=80,max_w=260,max_h=SIG_IMG_H)
+            sigs.append({'img':cb_img,'name':c['sig_name'],'title':c.get('sig_title','')})
 
-    n_sigs=len(sigs)
-    actual_slot=min(480,(W-PAD*2)//max(n_sigs,1))
-    fSN=font("WorkSans-Regular.ttf",30); fSS=font("WorkSans-Regular.ttf",24)
-    fSH=font("NothingYouCouldDo-Regular.ttf",68)
+    # Dynamic font size — scales down as n_sigs increases, no overlap
+    n_sigs     = len(sigs)
+    name_size  = max(22, 32-(n_sigs-1)*2)
+    title_size = max(18, 26-(n_sigs-1)*2)
+    fSN=font("WorkSans-Regular.ttf",name_size)
+    fSS=font("WorkSans-Regular.ttf",title_size)
+
+    # Even slot distribution
+    actual_slot = min(500,(W-PAD*2)//max(n_sigs,1))
+    max_text_w  = actual_slot - 20
 
     for i,sig in enumerate(sigs):
         sx=PAD+i*actual_slot
         if sig.get('img'):
             img.paste(sig['img'],(sx,SIG_Y)); rule_y=SIG_Y+SIG_IMG_H+14
         else:
-            # Fallback — render name in Brittany Signature font
-            fb_img = make_sig_png(
-                sig['name'],
-                os.path.join(FONT_DIR, "BrittanySignature.ttf"),
-                size=90, max_w=340, max_h=SIG_IMG_H, color=NAVY
-            )
-            if fb_img:
-                img.paste(fb_img, (sx, SIG_Y))
-                rule_y = SIG_Y + SIG_IMG_H + 14
-            else:
-                # Last resort — plain text
-                fSH = font("NothingYouCouldDo-Regular.ttf", 68)
-                d.text((sx, SIG_Y), sig['name'].split()[0], font=fSH, fill=NAVY)
-                rule_y = SIG_Y + 80
-        d.rectangle([sx,rule_y,sx+280,rule_y+3],fill=NAVY)
-        d.text((sx,rule_y+12),sig['name'],font=fSN,fill=BLK)
-        d.text((sx,rule_y+52),sig['title'],font=fSS,fill=GREY)
+            # Last resort plain text
+            fFB=font("NothingYouCouldDo-Regular.ttf",68)
+            d.text((sx,SIG_Y),sig['name'].split()[0],font=fFB,fill=NAVY)
+            rule_y=SIG_Y+80
+        d.rectangle([sx,rule_y,sx+260,rule_y+3],fill=NAVY)
+        d.text((sx,rule_y+12),truncate(d,sig['name'],fSN,max_text_w),font=fSN,fill=BLK)
+        d.text((sx,rule_y+12+name_size+8),truncate(d,sig['title'],fSS,max_text_w),font=fSS,fill=GREY)
 
-    # Footer bar — fixed at bottom
+    # ── FOOTER BAR — always fixed ──
     d.rectangle([0,FOOTER_BAR_Y,  W,FOOTER_BAR_Y+8],fill=GOLD)
     d.rectangle([0,FOOTER_BAR_Y+8,W,H],             fill=NAVY)
     fBot=font("WorkSans-Regular.ttf",24)
     em="programmes@khyontekai.com"; cp="© 2026 Khyontek AI Private Limited"
     d.text((PAD,FOOTER_TEXT_Y),em,font=fBot,fill=(160,170,215))
-    d.text((W-PAD-tw(d,cp,fBot),FOOTER_TEXT_Y),cp,font=fBot,fill=(160,170,215))
+    d.text((W-PAD-get_tw(d,cp,fBot),FOOTER_TEXT_Y),cp,font=fBot,fill=(160,170,215))
 
     return img
 
@@ -337,8 +343,8 @@ def save_pdf(img,out):
 
 if __name__=="__main__":
     parser=argparse.ArgumentParser()
-    parser.add_argument('--data',required=True)
-    parser.add_argument('--output',required=True)
+    parser.add_argument('--data',   required=True)
+    parser.add_argument('--output', required=True)
     args=parser.parse_args()
     data=json.loads(args.data)
     img=generate(data)
