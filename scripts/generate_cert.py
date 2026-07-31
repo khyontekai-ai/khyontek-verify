@@ -98,28 +98,46 @@ def generate(data):
     W,H=3307,2339; img=Image.new("RGB",(W,H),WHITE); d=ImageDraw.Draw(img)
     PAD=140; MID=W//2
 
-    # ── Parse collabs — logo and sig are INDEPENDENT ──
-    collabs=[]
-    for i in range(1,4):
-        name      = data.get(f'collab_{i}_name','').strip()
-        logo_file = data.get(f'collab_{i}_logo','').strip()
-        logo_url  = data.get(f'collab_{i}_logo_url','').strip()
-        sig_name  = data.get(f'collab_{i}_sig_name','').strip()
-        sig_title = data.get(f'collab_{i}_sig_title','').strip()
-        sig_url   = data.get(f'collab_{i}_sig_url','').strip()
-        if name:
-            if logo_url:
-                logo_path = logo_url
-            elif logo_file:
-                logo_path = os.path.join(COLLAB_DIR, logo_file)
-            else:
-                logo_path = None
-            collabs.append({
-                'name':name, 'logo_path':logo_path,
-                'sig_name':sig_name, 'sig_title':sig_title, 'sig_url':sig_url,
-            })
+    # ── Parse meta JSON if present (GitHub dispatch nests extra data here) ──
+    import json as _json
+    meta = {}
+    if data.get('meta'):
+        try: meta = _json.loads(data['meta'])
+        except: meta = {}
 
-    show_njk   = data.get('show_njk_signature', False)
+    # ── Parse collabs — from meta.collaborators or flat fields ──
+    collabs=[]
+    meta_collabs = meta.get('collaborators', [])
+    if meta_collabs:
+        # New nested format
+        for i, c in enumerate(meta_collabs[:3]):
+            name = c.get('name','').strip()
+            if name:
+                logo_path = c.get('logo_url','').strip() or None
+                collabs.append({
+                    'name':     name,
+                    'logo_path':logo_path,
+                    'sig_name': c.get('sig_name','').strip(),
+                    'sig_title':c.get('sig_title','').strip(),
+                    'sig_url':  c.get('sig_url','').strip(),
+                })
+    else:
+        # Legacy flat format
+        for i in range(1,4):
+            name      = data.get(f'collab_{i}_name','').strip()
+            logo_file = data.get(f'collab_{i}_logo','').strip()
+            logo_url  = data.get(f'collab_{i}_logo_url','').strip()
+            sig_name  = data.get(f'collab_{i}_sig_name','').strip()
+            sig_title = data.get(f'collab_{i}_sig_title','').strip()
+            sig_url   = data.get(f'collab_{i}_sig_url','').strip()
+            if name:
+                if logo_url: logo_path = logo_url
+                elif logo_file: logo_path = os.path.join(COLLAB_DIR, logo_file)
+                else: logo_path = None
+                collabs.append({'name':name,'logo_path':logo_path,
+                    'sig_name':sig_name,'sig_title':sig_title,'sig_url':sig_url})
+
+    show_njk   = meta.get('show_njk_signature', data.get('show_njk_signature', False))
     duration   = data.get('duration','').strip()
     cert_id    = data.get('cert_id','KAI-SRIP-260001')
     end_date   = data.get('issue_date','')
@@ -272,7 +290,7 @@ def generate(data):
 
     # Pritam — always first
     # Priority: R2 URL → local PNG → Brittany font → NothingYouCouldDo
-    pritam_url = data.get('pritam_sig_url','').strip()
+    pritam_url = meta.get('pritam_sig_url', data.get('pritam_sig_url','')).strip()
     sig_p = load_img(pritam_url,SIG_IMG_H) if pritam_url else None
     if not sig_p: sig_p = load_img(SIG_PRITAM,SIG_IMG_H)
     if not sig_p: sig_p = make_sig_img("Pritam Deka",SIG_FONT_BRITTANY,size=90,max_w=300,max_h=SIG_IMG_H)
@@ -280,7 +298,7 @@ def generate(data):
 
     # NJK — if toggled
     if show_njk:
-        njk_url = data.get('njk_sig_url','').strip()
+        njk_url = meta.get('njk_sig_url', data.get('njk_sig_url','')).strip()
         sig_n = load_img(njk_url,SIG_IMG_H) if njk_url else None
         if not sig_n: sig_n = load_img(SIG_NJK,SIG_IMG_H)
         if not sig_n: sig_n = make_sig_img("Nayan J Kalita",SIG_FONT_BRITTANY,size=85,max_w=300,max_h=SIG_IMG_H)
