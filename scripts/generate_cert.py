@@ -12,7 +12,7 @@ Khyontek AI — Certificate PDF Generator FINAL v6
 - Three-line right footer: CIN / DPIIT+Assam Startup / Verify URL
 - URL-based image loading from Cloudflare R2
 """
-import sys, json, argparse, os, math, urllib.request
+import sys, json, argparse, os, math, urllib.request, base64, tempfile
 from PIL import Image, ImageDraw, ImageFont
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.pdfgen import canvas as rlcanvas
@@ -76,6 +76,21 @@ def load_img(path, target_h):
         print(f"WARNING: Could not load image {path}: {e}")
         return None
 
+def load_img_b64(b64_str, target_h):
+    """Load image from base64 string. Returns PIL image or None."""
+    if not b64_str: return None
+    try:
+        img_data = base64.b64decode(b64_str)
+        img = Image.open(BytesIO(img_data)).convert("RGBA")
+        w = int(img.width * target_h / img.height)
+        img = img.resize((w, target_h), Image.LANCZOS)
+        bg = Image.new("RGB", img.size, WHITE)
+        bg.paste(img, mask=img.split()[3])
+        return bg
+    except Exception as e:
+        print(f"WARNING: Could not decode base64 image: {e}")
+        return None
+
 def make_sig_img(text, font_path, size=80, max_w=260, max_h=90, color=NAVY):
     """Render signature font text to PIL image."""
     if not os.path.exists(font_path): return None
@@ -109,17 +124,17 @@ def generate(data):
     collabs=[]
     meta_collabs = meta.get('collaborators', [])
     if meta_collabs:
-        # New nested format
+        # New nested format with base64 images
         for i, c in enumerate(meta_collabs[:3]):
             name = c.get('name','').strip()
             if name:
-                logo_path = c.get('logo_url','').strip() or None
                 collabs.append({
                     'name':     name,
-                    'logo_path':logo_path,
+                    'logo_b64': c.get('logo_b64',''),
+                    'logo_path':None,  # not used in b64 mode
                     'sig_name': c.get('sig_name','').strip(),
                     'sig_title':c.get('sig_title','').strip(),
-                    'sig_url':  c.get('sig_url','').strip(),
+                    'sig_b64':  c.get('sig_b64',''),
                 })
     else:
         # Legacy flat format
@@ -200,7 +215,8 @@ def generate(data):
         fL=font("Italiana-Regular.ttf",100)
         d.text((PAD,STRIP_TOP),"Khyontek.ai",font=fL,fill=BLUE); kai_right=PAD+420
 
-    collabs_with_logo=[c for c in collabs if c.get('logo_path')]
+    # Collabs with logo — check b64 first, then logo_path
+    collabs_with_logo=[c for c in collabs if c.get('logo_b64') or c.get('logo_path')]
     if collabs_with_logo:
         SEP_X=kai_right+50
         d.rectangle([SEP_X,STRIP_TOP+20,SEP_X+3,STRIP_TOP+LOGO_H-20],fill=GOLD)
@@ -211,7 +227,10 @@ def generate(data):
         img.paste(rot,(SEP_X-rot.width//2-8,STRIP_TOP+(LOGO_H-rot.height)//2),rot)
         cx_pos=SEP_X+55; fCNsm=font("WorkSans-Regular.ttf",22)
         for c in collabs_with_logo:
-            clogo=load_img(c['logo_path'],COLLAB_H)
+            # Try base64 first, then local path
+            clogo = load_img_b64(c.get('logo_b64',''), COLLAB_H)
+            if not clogo and c.get('logo_path'):
+                clogo = load_img(c['logo_path'], COLLAB_H)
             if clogo:
                 if clogo.width>MAX_COLLAB_LOGO_W:
                     clogo=clogo.resize((MAX_COLLAB_LOGO_W,COLLAB_H),Image.LANCZOS)
@@ -290,27 +309,27 @@ def generate(data):
 
     # Pritam — always first
     # Priority: R2 URL → local PNG → Brittany font → NothingYouCouldDo
-    pritam_url = meta.get('pritam_sig_url', data.get('pritam_sig_url','')).strip()
-    sig_p = load_img(pritam_url,SIG_IMG_H) if pritam_url else None
-    if not sig_p: sig_p = load_img(SIG_PRITAM,SIG_IMG_H)
-    if not sig_p: sig_p = make_sig_img("Pritam Deka",SIG_FONT_BRITTANY,size=90,max_w=300,max_h=SIG_IMG_H)
+    # Pritam — base64 from payload → local PNG → Brittany font
+    pritam_b64 = meta.get('pritam_sig_b64','')
+    sig_p = load_img_b64(pritam_b64, SIG_IMG_H) if pritam_b64 else None
+    if not sig_p: sig_p = load_img(SIG_PRITAM, SIG_IMG_H)
+    if not sig_p: sig_p = make_sig_img("Pritam Deka", SIG_FONT_BRITTANY, size=90, max_w=300, max_h=SIG_IMG_H)
     sigs.append({'img':sig_p,'name':'Dr Pritam Deka','title':'CEO, Khyontek AI'})
 
     # NJK — if toggled
     if show_njk:
-        njk_url = meta.get('njk_sig_url', data.get('njk_sig_url','')).strip()
-        sig_n = load_img(njk_url,SIG_IMG_H) if njk_url else None
-        if not sig_n: sig_n = load_img(SIG_NJK,SIG_IMG_H)
-        if not sig_n: sig_n = make_sig_img("Nayan J Kalita",SIG_FONT_BRITTANY,size=85,max_w=300,max_h=SIG_IMG_H)
+        njk_b64 = meta.get('njk_sig_b64','')
+        sig_n = load_img_b64(njk_b64, SIG_IMG_H) if njk_b64 else None
+        if not sig_n: sig_n = load_img(SIG_NJK, SIG_IMG_H)
+        if not sig_n: sig_n = make_sig_img("Nayan J Kalita", SIG_FONT_BRITTANY, size=85, max_w=300, max_h=SIG_IMG_H)
         sigs.append({'img':sig_n,'name':'Nayan Jyoti Kalita','title':'CSO, Khyontek AI'})
 
-    # Collab signatories — only if sig_name provided, independent of logo
+    # Collab signatories — base64 → Brittany font fallback
     for c in collabs:
         if c.get('sig_name'):
-            # Priority: R2 URL → Brittany font → NothingYouCouldDo
-            cb_img = load_img(c.get('sig_url',''),SIG_IMG_H) if c.get('sig_url') else None
+            cb_img = load_img_b64(c.get('sig_b64',''), SIG_IMG_H) if c.get('sig_b64') else None
             if not cb_img:
-                cb_img = make_sig_img(c['sig_name'],SIG_FONT_BRITTANY,size=80,max_w=260,max_h=SIG_IMG_H)
+                cb_img = make_sig_img(c['sig_name'], SIG_FONT_BRITTANY, size=80, max_w=260, max_h=SIG_IMG_H)
             sigs.append({'img':cb_img,'name':c['sig_name'],'title':c.get('sig_title','')})
 
     # Dynamic font size — scales down as n_sigs increases, no overlap
