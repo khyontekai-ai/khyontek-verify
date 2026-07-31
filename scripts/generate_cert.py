@@ -12,7 +12,7 @@ Khyontek AI — Certificate PDF Generator FINAL v6
 - Three-line right footer: CIN / DPIIT+Assam Startup / Verify URL
 - URL-based image loading from Cloudflare R2
 """
-import sys, json, argparse, os, math, urllib.request, base64, tempfile
+import sys, json, argparse, os, math, urllib.request, base64, tempfile, io
 from PIL import Image, ImageDraw, ImageFont
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.pdfgen import canvas as rlcanvas
@@ -91,6 +91,49 @@ def load_img_b64(b64_str, target_h):
         print(f"WARNING: Could not decode base64 image: {e}")
         return None
 
+def fetch_from_r2(key):
+    """Fetch image from private R2 bucket using credentials from env vars."""
+    if not key: return None
+    try:
+        import boto3
+        from botocore.config import Config
+        account_id = os.environ.get('R2_ACCOUNT_ID','')
+        access_key = os.environ.get('R2_ACCESS_KEY_ID','')
+        secret_key = os.environ.get('R2_SECRET_ACCESS_KEY','')
+        bucket     = os.environ.get('R2_BUCKET_NAME','')
+        if not all([account_id, access_key, secret_key, bucket]):
+            print(f"WARNING: R2 credentials not set — cannot fetch {key}")
+            return None
+        s3 = boto3.client(
+            's3',
+            endpoint_url=f'https://{account_id}.r2.cloudflarestorage.com',
+            aws_access_key_id=access_key,
+            aws_secret_access_key=secret_key,
+            config=Config(signature_version='s3v4'),
+            region_name='auto',
+        )
+        obj = s3.get_object(Bucket=bucket, Key=key)
+        img_data = obj['Body'].read()
+        return Image.open(io.BytesIO(img_data)).convert("RGBA")
+    except Exception as e:
+        print(f"WARNING: Could not fetch {key} from R2: {e}")
+        return None
+
+def load_r2_img(key, target_h):
+    """Fetch image from R2 and resize to target height."""
+    if not key: return None
+    raw = fetch_from_r2(key)
+    if not raw: return None
+    try:
+        w = int(raw.width * target_h / raw.height)
+        resized = raw.resize((w, target_h), Image.LANCZOS)
+        bg = Image.new("RGB", resized.size, WHITE)
+        bg.paste(resized, mask=resized.split()[3])
+        return bg
+    except Exception as e:
+        print(f"WARNING: Could not resize R2 image {key}: {e}")
+        return None
+
 def make_sig_img(text, font_path, size=80, max_w=260, max_h=90, color=NAVY):
     """Render signature font text to PIL image."""
     if not os.path.exists(font_path): return None
@@ -124,16 +167,18 @@ def generate(data):
     collabs=[]
     meta_collabs = meta.get('collaborators', [])
     if meta_collabs:
-        # New nested format with base64 images
+        # New nested format with R2 keys
         for i, c in enumerate(meta_collabs[:3]):
             name = c.get('name','').strip()
             if name:
                 collabs.append({
                     'name':     name,
+                    'logo_key': c.get('logo_key',''),
                     'logo_b64': c.get('logo_b64',''),
-                    'logo_path':None,  # not used in b64 mode
+                    'logo_path':None,
                     'sig_name': c.get('sig_name','').strip(),
                     'sig_title':c.get('sig_title','').strip(),
+                    'sig_key':  c.get('sig_key',''),
                     'sig_b64':  c.get('sig_b64',''),
                 })
     else:
@@ -215,8 +260,8 @@ def generate(data):
         fL=font("Italiana-Regular.ttf",100)
         d.text((PAD,STRIP_TOP),"Khyontek.ai",font=fL,fill=BLUE); kai_right=PAD+420
 
-    # Collabs with logo — check b64 first, then logo_path
-    collabs_with_logo=[c for c in collabs if c.get('logo_b64') or c.get('logo_path')]
+    # Collabs with logo — R2 key → base64 → local path
+    collabs_with_logo=[c for c in collabs if c.get('logo_key') or c.get('logo_b64') or c.get('logo_path')]
     if collabs_with_logo:
         SEP_X=kai_right+50
         d.rectangle([SEP_X,STRIP_TOP+20,SEP_X+3,STRIP_TOP+LOGO_H-20],fill=GOLD)
@@ -227,10 +272,10 @@ def generate(data):
         img.paste(rot,(SEP_X-rot.width//2-8,STRIP_TOP+(LOGO_H-rot.height)//2),rot)
         cx_pos=SEP_X+55; fCNsm=font("WorkSans-Regular.ttf",22)
         for c in collabs_with_logo:
-            # Try base64 first, then local path
-            clogo = load_img_b64(c.get('logo_b64',''), COLLAB_H)
-            if not clogo and c.get('logo_path'):
-                clogo = load_img(c['logo_path'], COLLAB_H)
+            # Try R2 key → base64 → local path
+            clogo = load_r2_img(c.get('logo_key',''), COLLAB_H)
+            if not clogo: clogo = load_img_b64(c.get('logo_b64',''), COLLAB_H)
+            if not clogo and c.get('logo_path'): clogo = load_img(c['logo_path'], COLLAB_H)
             if clogo:
                 if clogo.width>MAX_COLLAB_LOGO_W:
                     clogo=clogo.resize((MAX_COLLAB_LOGO_W,COLLAB_H),Image.LANCZOS)
@@ -309,25 +354,25 @@ def generate(data):
 
     # Pritam — always first
     # Priority: R2 URL → local PNG → Brittany font → NothingYouCouldDo
-    # Pritam — base64 from payload → local PNG → Brittany font
-    pritam_b64 = meta.get('pritam_sig_b64','')
-    sig_p = load_img_b64(pritam_b64, SIG_IMG_H) if pritam_b64 else None
+    # Pritam — R2 key → local PNG → Brittany font
+    pritam_key = meta.get('pritam_sig_key', 'signatures/sig_pritam.png')
+    sig_p = load_r2_img(pritam_key, SIG_IMG_H)
     if not sig_p: sig_p = load_img(SIG_PRITAM, SIG_IMG_H)
     if not sig_p: sig_p = make_sig_img("Pritam Deka", SIG_FONT_BRITTANY, size=90, max_w=300, max_h=SIG_IMG_H)
     sigs.append({'img':sig_p,'name':'Dr Pritam Deka','title':'CEO, Khyontek AI'})
 
     # NJK — if toggled
     if show_njk:
-        njk_b64 = meta.get('njk_sig_b64','')
-        sig_n = load_img_b64(njk_b64, SIG_IMG_H) if njk_b64 else None
+        njk_key = meta.get('njk_sig_key', 'signatures/sig_njk.png')
+        sig_n = load_r2_img(njk_key, SIG_IMG_H)
         if not sig_n: sig_n = load_img(SIG_NJK, SIG_IMG_H)
         if not sig_n: sig_n = make_sig_img("Nayan J Kalita", SIG_FONT_BRITTANY, size=85, max_w=300, max_h=SIG_IMG_H)
         sigs.append({'img':sig_n,'name':'Nayan Jyoti Kalita','title':'CSO, Khyontek AI'})
 
-    # Collab signatories — base64 → Brittany font fallback
+    # Collab signatories — R2 key → Brittany font fallback
     for c in collabs:
         if c.get('sig_name'):
-            cb_img = load_img_b64(c.get('sig_b64',''), SIG_IMG_H) if c.get('sig_b64') else None
+            cb_img = load_r2_img(c.get('sig_key',''), SIG_IMG_H) if c.get('sig_key') else None
             if not cb_img:
                 cb_img = make_sig_img(c['sig_name'], SIG_FONT_BRITTANY, size=80, max_w=260, max_h=SIG_IMG_H)
             sigs.append({'img':cb_img,'name':c['sig_name'],'title':c.get('sig_title','')})
