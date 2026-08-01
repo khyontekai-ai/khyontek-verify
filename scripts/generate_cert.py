@@ -209,13 +209,9 @@ def generate(data):
     name_str   = data.get('recipient_name','Recipient Name')
     programme  = data.get('programme','')
     track      = data.get('track','')
-    course      = data.get('course','').strip()
+    # course and institution — read from meta first (GitHub dispatch nests them there)
+    course      = meta.get('course',      data.get('course','')).strip()
     institution = meta.get('institution', data.get('institution', data.get('college',''))).strip()
-    course      = data.get('course','').strip()
-    # institution — from meta (intern college) or direct field
-    institution = meta.get('institution', data.get('institution','')).strip()
-    if not institution:
-        institution = data.get('college','').strip()
 
     # ── WATERMARKS ──
     hx,ht,hh,amp,freq=200,300,1600,70,2.8
