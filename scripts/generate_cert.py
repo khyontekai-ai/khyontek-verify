@@ -209,6 +209,13 @@ def generate(data):
     name_str   = data.get('recipient_name','Recipient Name')
     programme  = data.get('programme','')
     track      = data.get('track','')
+    course      = data.get('course','').strip()
+    institution = meta.get('institution', data.get('institution', data.get('college',''))).strip()
+    course      = data.get('course','').strip()
+    # institution — from meta (intern college) or direct field
+    institution = meta.get('institution', data.get('institution','')).strip()
+    if not institution:
+        institution = data.get('college','').strip()
 
     # ── WATERMARKS ──
     hx,ht,hh,amp,freq=200,300,1600,70,2.8
@@ -309,6 +316,15 @@ def generate(data):
     fN=font("Lora-BoldItalic.ttf",96); nw=get_tw(d,name_str,fN)
     d.text((MID-nw//2,790),name_str,font=fN,fill=NAVY)
     ul=min(nw//2+130,660); d.rectangle([MID-ul,910,MID+ul,916],fill=NAVY)
+
+    # ── COURSE / INSTITUTION LINE ──
+    parts=[p for p in [course,institution] if p]
+    sub_line="  ·  ".join(parts)
+    SUB_Y_OFFSET=0
+    if sub_line:
+        fSub=font("Lora-Italic.ttf",38)
+        d.text((MID-get_tw(d,sub_line,fSub)//2,934),sub_line,font=fSub,fill=GREY)
+        SUB_Y_OFFSET=58
 
     # ── BODY TEXT ──
     fBo=font("Lora-Regular.ttf",40); fBi=font("Lora-Italic.ttf",40)
