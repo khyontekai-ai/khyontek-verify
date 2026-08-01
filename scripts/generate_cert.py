@@ -213,6 +213,12 @@ def generate(data):
     course      = meta.get('course',      data.get('course','')).strip()
     institution = meta.get('institution', data.get('institution', data.get('college',''))).strip()
 
+    # DEBUG
+    print(f"DEBUG course='{course}' institution='{institution}'")
+    print(f"DEBUG meta keys: {list(meta.keys())}")
+    print(f"DEBUG meta course: '{meta.get('course','NOT_IN_META')}'")
+    print(f"DEBUG meta institution: '{meta.get('institution','NOT_IN_META')}'")
+
     # ── WATERMARKS ──
     hx,ht,hh,amp,freq=200,300,1600,70,2.8
     for i in range(119):
