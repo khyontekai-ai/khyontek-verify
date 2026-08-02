@@ -30,25 +30,31 @@ jobs:
           R2_ACCESS_KEY_ID:     ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_BUCKET_NAME:       ${{ secrets.R2_BUCKET_NAME }}
+          CERT_PAYLOAD:         ${{ toJson(github.event.client_payload) }}
         run: |
+          echo "$CERT_PAYLOAD" > /tmp/cert_payload.json
           python scripts/generate_cert.py \
-            --data '${{ toJson(github.event.client_payload) }}' \
+            --data "$(cat /tmp/cert_payload.json)" \
             --output /tmp/certificate.pdf
 
       - name: Send certificate email
         env:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           ADMIN_EMAIL:    ${{ secrets.ADMIN_EMAIL }}
+          CERT_PAYLOAD:   ${{ toJson(github.event.client_payload) }}
         run: |
+          echo "$CERT_PAYLOAD" > /tmp/cert_payload.json
           python scripts/send_email.py \
-            --data '${{ toJson(github.event.client_payload) }}' \
+            --data "$(cat /tmp/cert_payload.json)" \
             --pdf /tmp/certificate.pdf
 
       - name: Insert MongoDB record
         env:
-          MONGODB_URI: ${{ secrets.MONGODB_URI }}
-          DB_NAME:     ${{ secrets.DB_NAME }}
-          EMAIL_SALT:  ${{ secrets.EMAIL_SALT }}
+          MONGODB_URI:  ${{ secrets.MONGODB_URI }}
+          DB_NAME:      ${{ secrets.DB_NAME }}
+          EMAIL_SALT:   ${{ secrets.EMAIL_SALT }}
+          CERT_PAYLOAD: ${{ toJson(github.event.client_payload) }}
         run: |
+          echo "$CERT_PAYLOAD" > /tmp/cert_payload.json
           python scripts/mongo_insert.py \
-            --data '${{ toJson(github.event.client_payload) }}'
+            --data "$(cat /tmp/cert_payload.json)"
